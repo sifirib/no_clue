@@ -79,7 +79,7 @@ def get_and_load_sprits(foldername, character):
     for sprit in os.listdir(path):
         sprit = os.path.join(path, f"{sprit}")
         sprits.append(pygame.image.load(sprit))
-    return sprits
+    return (sprits, len(sprits))
 
 
 class Character:
@@ -90,13 +90,13 @@ class Character:
         self.y = position[1]
         self.width = 64
         self.height = 64
-        self.velocity = 5
         self.walk_speed = 3
-        self.run_speed = 10
+        self.run_speed = self.walk_speed + 4
+        self.speed = self.walk_speed
         self.jump_power = 10
         self.jump_step = 10 # must be same number with jump_power
         
-        self.sprits = {"Walk":get_and_load_sprits("Walk", self), 
+        self.sprits = {"Walk":get_and_load_sprits("Walk", self),
                        "Run":get_and_load_sprits("Run", self),
                        "Idle":get_and_load_sprits("Idle", self),
                        "Jump":get_and_load_sprits("Jump", self),
@@ -106,9 +106,10 @@ class Character:
         self.health = 100
         self.controllers = {"jump": pygame.K_UP, 
                             "right": pygame.K_RIGHT, 
-                            "left": pygame.K_LEFT}
-        self.is_ = {"right":False, "left":False, "jump":False}
-        self.counts = {"walk":0, "idle":0, "jump":0}
+                            "left": pygame.K_LEFT,
+                            "run": pygame.K_RSHIFT}
+        self.is_ = {"right":False, "left":False, "jump":False, "run":False}
+        self.counts = {"walk":0, "idle":0, "jump":0, "run":0}
         
         self.hitbox = (self.x + 20, self.y, 28, 60)
         self.collision = pygame.Rect(self.hitbox)
@@ -117,9 +118,9 @@ class Character:
 
     def walkto(self, direction):
         if direction == "right" and self.x < main_menu.width - (self.width - 5):
-            self.x += self.walk_speed
+            self.x += self.speed
         elif direction == "left" and self.x > 0 - 5:
-            self.x -= self.walk_speed
+            self.x -= self.speed
 
     def jumpto(self):
         if self.is_["jump"]:
@@ -133,26 +134,36 @@ class Character:
         
     def draw(self, window):
         
-        if self.counts["idle"] + 1 >= 45:
+        if self.counts["idle"] + 1 >= self.sprits["Idle"][1] * 3:
             self.counts["idle"] = 0
-        if self.counts["walk"] + 1 >= 45:
+        if self.counts["walk"] + 1 >= self.sprits["Walk"][1] * 3:
             self.counts["walk"] = 0
-        if self.counts["jump"] +1 >= 90:
+        if self.counts["jump"] +1 >= self.sprits["Jump"][1] * 3:
             self.counts["jump"] = 0
+        if self.counts["run"] + 1 >= self.sprits["Run"][1] * 3:
+            self.counts["run"] = 0
             
         if self.is_["right"]:
             self.walkto("right")
-            window.blit(self.sprits["Walk"][self.counts["walk"]//3], (self.x, self.y))
-            self.counts["walk"] += 1
+            if self.is_["run"]:
+                window.blit(self.sprits["Run"][0][self.counts["run"]//3], (self.x, self.y))
+                self.counts["run"] += 1
+            else:
+                window.blit(self.sprits["Walk"][0][self.counts["walk"]//3], (self.x, self.y))
+                self.counts["walk"] += 1
         elif self.is_["left"]:
             self.walkto("left")
-            window.blit(self.sprits["Walk"][self.counts["walk"]//3], (self.x, self.y))
-            self.counts["walk"] += 1
+            if self.is_["run"]:
+                window.blit(self.sprits["Run"][0][self.counts["run"]//3], (self.x, self.y))
+                self.counts["run"] += 1
+            else:
+                window.blit(self.sprits["Walk"][0][self.counts["walk"]//3], (self.x, self.y))
+                self.counts["walk"] += 1
         elif self.is_["jump"]:
             self.jumpto()
-            window.blit(self.sprits["Jump"][self.counts["jump"]//3], (self.x, self.y))
+            window.blit(self.sprits["Jump"][0][self.counts["jump"]//3], (self.x, self.y))
         else:
-            window.blit(self.sprits["Idle"][self.counts["idle"]//3], (self.x, self.y))
+            window.blit(self.sprits["Idle"][0][self.counts["idle"]//3], (self.x, self.y))
             self.counts["idle"] += 1
         
         self.hitbox = (self.x + 10, self.y + 5, 45, 60)
@@ -175,6 +186,13 @@ class Character:
                 self.is_["right"] = False
                 self.is_["left"] = False
                 self.counts["walk"] = 0
+            if keys[self.controllers["run"]]:
+                self.speed = self.run_speed
+                self.is_["run"] = True
+            else:
+                self.speed = self.walk_speed
+                self.is_["run"] = False
+                self.counts["run"] = 0
             if keys[self.controllers["jump"]]:
                 self.is_["jump"] = True
                 self.is_["left"] = False
@@ -208,9 +226,13 @@ main_menu.set_("screen")
 main_menu.set_("caption")
 
 # Background music
-mixer.music.play(-1)
+#mixer.music.play(-1)
+
+# Buttons
 play_button = Button((0, 100, 0), 20, 300, 120, 80, 'Play')
+settings_button = Button((0, 100, 0), 20, 350, 120, 80, 'Options')
 leave_button = Button((0, 100, 0), 20, 400, 120, 80, 'Leave')
+
 
 # Character
 
@@ -221,7 +243,8 @@ char1.jump_step = 12
 char1.jump_power = 12
 char1.controllers = {"jump": pygame.K_w, 
                      "right": pygame.K_d, 
-                     "left": pygame.K_a}
+                     "left": pygame.K_a,
+                     "run": pygame.K_LSHIFT}
 
 
 def redraw_game_screen(*args, window):
@@ -234,6 +257,7 @@ def redraw_game_screen(*args, window):
 
     
     play_button.draw(window.screen)
+    settings_button.draw(window.screen)
     leave_button.draw(window.screen)
     pygame.display.update()
     
@@ -279,7 +303,7 @@ while main_menu_loop:
                 quit()
             if play_button.isOver(pos):
                 play_loop = True
-                
+        
         if event.type == pygame.MOUSEMOTION:
             if play_button.isOver(pos):
                 play_button.font_size = 20
@@ -289,17 +313,20 @@ while main_menu_loop:
                 leave_button.font_size = 20
             else:
                 leave_button.font_size = 16
+            if settings_button.isOver(pos):
+                settings_button.font_size = 20
+            else:
+                settings_button.font_size = 16
                 
         # KEYBOARD behaviours
         char.keyboard_behaviours()
         char1.keyboard_behaviours()
-       
         
-        print(char.x, char.y)
+        
     if is_collision(char.collision, char1.collision):
         print('hi')
     redraw_game_screen(char1, char, window=main_menu)
-
+    
     while play_loop:
         print(".")
         
