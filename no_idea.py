@@ -40,7 +40,6 @@ class Menu(Screen):
         super().__init__(name, sizes, background_image, background_music, caption, icon)
   
 
-
 class Button:
     def __init__(self, color, x, y, width, height, text=''):
         self.color = color
@@ -72,9 +71,9 @@ class Button:
         return False
 
 
-def get_and_load_sprits(foldername, character):
+def get_and_load_sprits(direction, foldername, character):
     current_path = os.getcwd()
-    path = os.path.join(current_path, "sprits", character.name, f"{foldername}", "")
+    path = os.path.join(current_path, "sprits", character.name, direction, f"{foldername}", "")
     sprits = []
     for sprit in os.listdir(path):
         sprit = os.path.join(path, f"{sprit}")
@@ -96,26 +95,35 @@ class Character:
         self.jump_power = 10
         self.jump_step = 10 # must be same number with jump_power
         
-        self.sprits = {"Walk":get_and_load_sprits("Walk", self),
-                       "Run":get_and_load_sprits("Run", self),
-                       "Idle":get_and_load_sprits("Idle", self),
-                       "Jump":get_and_load_sprits("Jump", self),
-                       "Dead":get_and_load_sprits("Dead", self)
-                       }
         self.points = 0
         self.health = 100
         self.controllers = {"jump": pygame.K_UP, 
                             "right": pygame.K_RIGHT, 
                             "left": pygame.K_LEFT,
                             "run": pygame.K_RSHIFT}
-        self.is_ = {"right":False, "left":False, "jump":False, "run":False}
-        self.counts = {"walk":0, "idle":0, "jump":0, "run":0}
+        
+        self.is_ = {"right":False, "left":False, "jump":False, "run":False, "dead":False}
+        self.counts = {"walk":0, "idle":0, "jump":0, "run":0, "dead":0}
+        self.last_direction = "right"
+        
+        self.sprits_r = {"Walk":get_and_load_sprits("right", "Walk", self),
+                       "Run":get_and_load_sprits("right", "Run", self),
+                       "Idle":get_and_load_sprits("right", "Idle", self),
+                       "Jump":get_and_load_sprits("right", "Jump", self),
+                       "Dead":get_and_load_sprits("right", "Dead", self)
+                       }
+        self.sprits_l = {"Walk":get_and_load_sprits("left", "Walk", self),
+                       "Run":get_and_load_sprits("left", "Run", self),
+                       "Idle":get_and_load_sprits("left", "Idle", self),
+                       "Jump":get_and_load_sprits("left", "Jump", self),
+                       "Dead":get_and_load_sprits("left", "Dead", self)
+                       }
+        self.sprits = self.sprits_r
         
         self.hitbox = (self.x + 20, self.y, 28, 60)
         self.collision = pygame.Rect(self.hitbox)
         
         
-
     def walkto(self, direction):
         if direction == "right" and self.x < main_menu.width - (self.width - 5):
             self.x += self.speed
@@ -127,6 +135,9 @@ class Character:
             if self.jump_step >= -self.jump_power:
                     self.y -= (self.jump_step * abs(self.jump_step)) * 0.33
                     self.jump_step -= 1
+                    
+                    if self.jump_power >= 20 and self.jump_step == -self.jump_power - 1:
+                        self.is_["dead"] = True
             else: 
                 self.jump_step = self.jump_power
                 self.is_["jump"] = False
@@ -134,71 +145,90 @@ class Character:
         
     def draw(self, window):
         
-        if self.counts["idle"] + 1 >= self.sprits["Idle"][1] * 3:
+        if self.counts["idle"] + 1 >= self.sprits["Idle"][1] * 4:
             self.counts["idle"] = 0
-        if self.counts["walk"] + 1 >= self.sprits["Walk"][1] * 3:
+        if self.counts["walk"] + 1 >= self.sprits["Walk"][1] * 4:
             self.counts["walk"] = 0
-        if self.counts["jump"] +1 >= self.sprits["Jump"][1] * 3:
+        if self.counts["jump"] +1 >= self.sprits["Jump"][1] * 4:
             self.counts["jump"] = 0
-        if self.counts["run"] + 1 >= self.sprits["Run"][1] * 3:
+        if self.counts["run"] + 1 >= self.sprits["Run"][1] * 4:
             self.counts["run"] = 0
+        if self.counts["dead"] + 1 >= self.sprits["Dead"][1] * 4:
+            self.counts["dead"] = 0
+            global main_menu_loop 
+            main_menu_loop = False
             
-        if self.is_["right"]:
-            self.walkto("right")
-            if self.is_["run"]:
-                window.blit(self.sprits["Run"][0][self.counts["run"]//3], (self.x, self.y))
-                self.counts["run"] += 1
-            else:
-                window.blit(self.sprits["Walk"][0][self.counts["walk"]//3], (self.x, self.y))
-                self.counts["walk"] += 1
-        elif self.is_["left"]:
-            self.walkto("left")
-            if self.is_["run"]:
-                window.blit(self.sprits["Run"][0][self.counts["run"]//3], (self.x, self.y))
-                self.counts["run"] += 1
-            else:
-                window.blit(self.sprits["Walk"][0][self.counts["walk"]//3], (self.x, self.y))
-                self.counts["walk"] += 1
-        elif self.is_["jump"]:
-            self.jumpto()
-            window.blit(self.sprits["Jump"][0][self.counts["jump"]//3], (self.x, self.y))
+            
+        if self.is_["dead"]:
+            window.blit(self.sprits["Dead"][0][self.counts["dead"]//4], (self.x, self.y))
+            self.counts["dead"] += 1
         else:
-            window.blit(self.sprits["Idle"][0][self.counts["idle"]//3], (self.x, self.y))
-            self.counts["idle"] += 1
+            if self.is_["jump"]:
+                self.jumpto()
+                window.blit(self.sprits["Jump"][0][self.counts["jump"]//4], (self.x, self.y))
+            if self.is_["right"]:
+                self.walkto("right")
+                if self.is_["run"]:
+                    window.blit(self.sprits["Run"][0][self.counts["run"]//4], (self.x, self.y))
+                    self.counts["run"] += 1
+                else:
+                    window.blit(self.sprits["Walk"][0][self.counts["walk"]//4], (self.x, self.y))
+                    self.counts["walk"] += 1
+            elif self.is_["left"]:
+                self.walkto("left")
+                if self.is_["run"]:
+                    window.blit(self.sprits["Run"][0][self.counts["run"]//4], (self.x, self.y))
+                    self.counts["run"] += 1
+                else:
+                    window.blit(self.sprits["Walk"][0][self.counts["walk"]//4], (self.x, self.y))
+                    self.counts["walk"] += 1
+            
+            else:
+                window.blit(self.sprits["Idle"][0][self.counts["idle"]//4], (self.x, self.y))
+                self.counts["idle"] += 1
+        
         
         self.hitbox = (self.x + 10, self.y + 5, 45, 60)
-        # pygame.draw.rect(window, (255, 0, 0), self.hitbox, 2)
+        #pygame.draw.rect(window, (255, 0, 0), self.hitbox, 2)
         
         
         
     def keyboard_behaviours(self):
+        
+        if self.is_["right"] == False and self.is_["left"] == False:
+            self.last_direction = self.last_direction
+        else:
+            if self.is_["right"]:
+                self.last_direction = "right"
+                self.sprits = self.sprits_r
+            else:
+                self.last_direction = "left"
+                self.sprits = self.sprits_l
         keys = pygame.key.get_pressed()
 
+        if keys[self.controllers["right"]]:
+            self.is_["right"] = True
+            self.is_["left"] = False
+        elif keys[self.controllers["left"]]:
+            self.is_["right"] = False
+            self.is_["left"] = True
+        else:
+            self.is_["right"] = False
+            self.is_["left"] = False
+            self.counts["walk"] = 0
+        if keys[self.controllers["run"]]:
+            self.speed = self.run_speed
+            self.is_["run"] = True
+        else:
+            self.speed = self.walk_speed
+            self.is_["run"] = False
+            self.counts["run"] = 0
         if not self.is_["jump"]:
-        
-            if keys[self.controllers["right"]]:
-                self.is_["right"] = True
-                self.is_["left"] = False
-            elif keys[self.controllers["left"]]:
-                self.is_["right"] = False
-                self.is_["left"] = True
-            else:
-                self.is_["right"] = False
-                self.is_["left"] = False
-                self.counts["walk"] = 0
-            if keys[self.controllers["run"]]:
-                self.speed = self.run_speed
-                self.is_["run"] = True
-            else:
-                self.speed = self.walk_speed
-                self.is_["run"] = False
-                self.counts["run"] = 0
             if keys[self.controllers["jump"]]:
                 self.is_["jump"] = True
                 self.is_["left"] = False
                 self.is_["right"] = False
                 self.counts["walk"] = 0
-    
     
     
 def is_collision(rect1, rect2):
@@ -226,9 +256,9 @@ main_menu.set_("screen")
 main_menu.set_("caption")
 
 # Background music
-#mixer.music.play(-1)
+mixer.music.play(-1)
 
-# Buttons
+# Buttonschar1.hitbox = (char1.x + 20, char1.y, 15, 60)
 play_button = Button((0, 100, 0), 20, 300, 120, 80, 'Play')
 settings_button = Button((0, 100, 0), 20, 350, 120, 80, 'Options')
 leave_button = Button((0, 100, 0), 20, 400, 120, 80, 'Leave')
@@ -237,8 +267,11 @@ leave_button = Button((0, 100, 0), 20, 400, 120, 80, 'Leave')
 # Character
 
 char = Character("girl", [100, 400])
+char.jump_step = 10
+char.jump_power = 10
 char1 = Character("boy", [200, 400])
-char1.walk_speed = 4
+
+char1.walk_speed = 5
 char1.jump_step = 12
 char1.jump_power = 12
 char1.controllers = {"jump": pygame.K_w, 
@@ -276,7 +309,7 @@ moon_height = -200
 play_loop = False
 while main_menu_loop:
     clock.tick(fps)
-
+    
     moon_loop += 1
     if moon_loop == 5:
         moon_loop = 1
@@ -329,5 +362,5 @@ while main_menu_loop:
     
     while play_loop:
         print(".")
-        
+
            
