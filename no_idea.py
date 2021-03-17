@@ -57,7 +57,6 @@ class Button:
 
         if self.text != '':
             font = pygame.font.Font('freesansbold.ttf', self.font_size )
-            gog = pygame.font.SysFont('comicsans', 40)
             text = font.render(self.text, 1, (255, 255, 255))
             win.blit(text, (
             self.x + (self.width / 2 - text.get_width() / 2), self.y + (self.height / 2 - text.get_height() / 2)))
@@ -71,30 +70,32 @@ class Button:
         return False
 
 
-def get_and_load_sprits(direction, foldername, character):
+def get_and_load_sprits(foldername, character):
     current_path = os.getcwd()
-    path = os.path.join(current_path, "sprits", character.name, direction, f"{foldername}", "")
+    path = os.path.join(current_path, "sprits", character.name, "resized", f"{foldername}", "")
     sprits = []
     for sprit in os.listdir(path):
         sprit = os.path.join(path, f"{sprit}")
         sprits.append(pygame.image.load(sprit))
+
     return (sprits, len(sprits))
 
 
-class Character:
+class Character(object):
     
     def __init__(self, name, position):
-        self.name = name # same with folder name of sprits
+        self.name = name  # same with folder name of sprits
         self.x = position[0]
         self.y = position[1]
         self.width = 64
         self.height = 64
+        
         self.walk_speed = 3
         self.run_speed = self.walk_speed + 4
         self.speed = self.walk_speed
-        self.jump_power = 10
-        self.jump_step = 10 # must be same number with jump_power
-        
+        self.jump_power = 10 
+        self.jump_step = self.jump_power # jump_step must take same value with the INITIAL value of jump_power
+
         self.points = 0
         self.health = 100
         self.controllers = {"jump": pygame.K_UP, 
@@ -106,24 +107,36 @@ class Character:
         self.counts = {"walk":0, "idle":0, "jump":0, "run":0, "dead":0}
         self.last_direction = "right"
         
-        self.sprits_r = {"Walk":get_and_load_sprits("right", "Walk", self),
-                       "Run":get_and_load_sprits("right", "Run", self),
-                       "Idle":get_and_load_sprits("right", "Idle", self),
-                       "Jump":get_and_load_sprits("right", "Jump", self),
-                       "Dead":get_and_load_sprits("right", "Dead", self)
+        self.sprits_r = {"Walk":get_and_load_sprits("Walk", self),
+                       "Run":get_and_load_sprits("Run", self),
+                       "Idle":get_and_load_sprits("Idle", self),
+                       "Jump":get_and_load_sprits("Jump", self),
+                       "Dead":get_and_load_sprits("Dead", self)
                        }
-        self.sprits_l = {"Walk":get_and_load_sprits("left", "Walk", self),
-                       "Run":get_and_load_sprits("left", "Run", self),
-                       "Idle":get_and_load_sprits("left", "Idle", self),
-                       "Jump":get_and_load_sprits("left", "Jump", self),
-                       "Dead":get_and_load_sprits("left", "Dead", self)
-                       }
+
+        self.sprits_l = {"Walk":[list(map(lambda img:pygame.transform.flip(img, True, False), self.sprits_r["Walk"][0])), self.sprits_r["Walk"][1]], 
+                        "Run":[list(map(lambda img:pygame.transform.flip(img, True, False), self.sprits_r["Run"][0])), self.sprits_r["Run"][1]], 
+                        "Idle":[list(map(lambda img:pygame.transform.flip(img, True, False), self.sprits_r["Idle"][0])), self.sprits_r["Idle"][1]], 
+                        "Jump":[list(map(lambda img:pygame.transform.flip(img, True, False), self.sprits_r["Jump"][0])), self.sprits_r["Jump"][1]], 
+                        "Dead":[list(map(lambda img:pygame.transform.flip(img, True, False), self.sprits_r["Dead"][0])), self.sprits_r["Dead"][1]]    
+                        }
         self.sprits = self.sprits_r
-        
-        self.hitbox = (self.x + 20, self.y, 28, 60)
-        self.collision = pygame.Rect(self.hitbox)
-        
-        
+
+    # @property 
+    # def run_speed(self): return self.walk_speed + 4
+    # @run_speed.setter
+    # def run_speed(self, value): self.run_speed = value
+
+    @property
+    def collision(self): return pygame.Rect(self.hitbox)
+    @collision.setter
+    def collision(self, value): self.collision = value
+
+    @property
+    def hitbox(self): return (self.x + 10, self.y + 5, 45, 60)
+    @hitbox.setter
+    def hitbox(self, value): self.hitbox = value
+
     def walkto(self, direction):
         if direction == "right" and self.x < main_menu.width - (self.width - 5):
             self.x += self.speed
@@ -141,8 +154,8 @@ class Character:
             else: 
                 self.jump_step = self.jump_power
                 self.is_["jump"] = False
-        
-        
+    
+    
     def draw(self, window):
         
         if self.counts["idle"] + 1 >= self.sprits["Idle"][1] * 4:
@@ -157,7 +170,6 @@ class Character:
             self.counts["dead"] = 0
             global main_menu_loop 
             main_menu_loop = False
-            
             
         if self.is_["dead"]:
             window.blit(self.sprits["Dead"][0][self.counts["dead"]//4], (self.x, self.y))
@@ -187,14 +199,10 @@ class Character:
                 window.blit(self.sprits["Idle"][0][self.counts["idle"]//4], (self.x, self.y))
                 self.counts["idle"] += 1
         
-        
-        self.hitbox = (self.x + 10, self.y + 5, 45, 60)
-        #pygame.draw.rect(window, (255, 0, 0), self.hitbox, 2)
-        
-        
+        pygame.draw.rect(window, (255, 0, 0), self.hitbox, 2)
         
     def keyboard_behaviours(self):
-        
+
         if self.is_["right"] == False and self.is_["left"] == False:
             self.last_direction = self.last_direction
         else:
@@ -232,12 +240,8 @@ class Character:
     
     
 def is_collision(rect1, rect2):
-    y = False
-    if rect1.colliderect(rect2):
-        y = True
-    return y
-        
 
+    return rect1.colliderect(rect2)
 
 # Initialize the pygame
 pygame.init()
@@ -249,7 +253,6 @@ main_menu = Menu("main", [800, 600], "space.png", "background_music.wav", "capti
 main_menu.load("image")
 main_menu.load("music")
 animated_moon = pygame.image.load("moon.png")
-
 
 # Display the screen
 main_menu.set_("screen") 
@@ -263,17 +266,12 @@ play_button = Button((0, 100, 0), 20, 300, 120, 80, 'Play')
 settings_button = Button((0, 100, 0), 20, 350, 120, 80, 'Options')
 leave_button = Button((0, 100, 0), 20, 400, 120, 80, 'Leave')
 
-
 # Character
-
 char = Character("girl", [100, 400])
-char.jump_step = 10
-char.jump_power = 10
+char.jump_step = char.jump_power = 10
 char1 = Character("boy", [200, 400])
-
-char1.walk_speed = 5
-char1.jump_step = 12
-char1.jump_power = 12
+char1.run_speed = char1.walk_speed + 6
+char1.jump_step = char1.jump_power = 12
 char1.controllers = {"jump": pygame.K_w, 
                      "right": pygame.K_d, 
                      "left": pygame.K_a,
@@ -282,24 +280,21 @@ char1.controllers = {"jump": pygame.K_w,
 
 def redraw_game_screen(*args, window):
     chars = args
-    window.blit(window.background_image, (0, 0))
+    window.screen.blit(window.background_image, (0, 0))
     window.screen.blit(animated_moon, (moon_width, moon_height))
     
     for char in chars:
         char.draw(window.screen)
-
-    
+        
     play_button.draw(window.screen)
     settings_button.draw(window.screen)
     leave_button.draw(window.screen)
     pygame.display.update()
     
-
-    
+ 
 # Clock 
 clock =  pygame.time.Clock()
 fps = 45
-
 
 # Game loop
 main_menu_loop = True
@@ -355,7 +350,6 @@ while main_menu_loop:
         char.keyboard_behaviours()
         char1.keyboard_behaviours()
         
-        
     if is_collision(char.collision, char1.collision):
         print('hi')
     redraw_game_screen(char1, char, window=main_menu)
@@ -363,4 +357,3 @@ while main_menu_loop:
     while play_loop:
         print(".")
 
-           
