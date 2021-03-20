@@ -6,10 +6,13 @@ import os
 class Screen:
     def __init__(self, name, sizes, background_image, background_music, caption, icon):
         self.name = name
+        self.x = self.y = 0
         self.width = sizes[0]
         self.height = sizes[1]
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.background_image = background_image
+        self.y2 = self.height  #self.background_image.get_height()
+        self.x2 = self.width   #self.background_image.get_width()
         self.background_music = background_music
         self.caption = caption
         self.icon = icon
@@ -18,7 +21,7 @@ class Screen:
         if what == "music":
             self.background_music = mixer.music.load(self.background_music)
         elif what == "image":
-            self.background_image = pygame.image.load(self.background_image)
+            self.background_image = pygame.image.load(self.background_image).convert()
             
     def set_(self, what):
         if what == "screen":
@@ -186,6 +189,7 @@ class Character(object):
                 else:
                     window.blit(self.sprits["Walk"][0][self.counts["walk"]//4], (self.x, self.y))
                     self.counts["walk"] += 1
+                    
             elif self.is_["left"]:
                 self.walkto("left")
                 if self.is_["run"]:
@@ -200,20 +204,28 @@ class Character(object):
                 self.counts["idle"] += 1
         
         pygame.draw.rect(window, (255, 0, 0), self.hitbox, 2)
-        
-    def keyboard_behaviours(self):
 
+    def keyboard_behaviours(self):
+        
         if self.is_["right"] == False and self.is_["left"] == False:
             self.last_direction = self.last_direction
+
         else:
             if self.is_["right"]:
                 self.last_direction = "right"
                 self.sprits = self.sprits_r
+
+                if main_menu.width - self.x <= main_menu.width / 3:
+                    main_menu.x -= self.speed * 3
+                    main_menu.x2 -= self.speed * 3
             else:
                 self.last_direction = "left"
                 self.sprits = self.sprits_l
+                if self.x <= main_menu.width / 3:
+                    main_menu.x += self.speed * 3
+                    main_menu.x2 += self.speed * 3
         keys = pygame.key.get_pressed()
-
+        
         if keys[self.controllers["right"]]:
             self.is_["right"] = True
             self.is_["left"] = False
@@ -231,14 +243,16 @@ class Character(object):
             self.speed = self.walk_speed
             self.is_["run"] = False
             self.counts["run"] = 0
+
         if not self.is_["jump"]:
             if keys[self.controllers["jump"]]:
                 self.is_["jump"] = True
                 self.is_["left"] = False
                 self.is_["right"] = False
                 self.counts["walk"] = 0
-    
-    
+                main_menu.y += self.jump_power * 3
+                main_menu.y2 += self.jump_power * 3
+                
 def is_collision(rect1, rect2):
 
     return rect1.colliderect(rect2)
@@ -251,15 +265,19 @@ main_menu = Menu("main", [800, 600], "space.png", "background_music.wav", "capti
 
 # Load media for screen
 main_menu.load("image")
+main_menu.y2 = main_menu.background_image.get_height()
+main_menu.x2 = main_menu.background_image.get_width()
 main_menu.load("music")
 animated_moon = pygame.image.load("moon.png")
+#animated_moon = pygame.image.load("moon.png").convert_alpha()
+
 
 # Display the screen
 main_menu.set_("screen") 
 main_menu.set_("caption")
 
 # Background music
-mixer.music.play(-1)
+#mixer.music.play(-1)
 
 # Buttonschar1.hitbox = (char1.x + 20, char1.y, 15, 60)
 play_button = Button((0, 100, 0), 20, 300, 120, 80, 'Play')
@@ -269,6 +287,7 @@ leave_button = Button((0, 100, 0), 20, 400, 120, 80, 'Leave')
 # Character
 char = Character("girl", [100, 400])
 char.jump_step = char.jump_power = 10
+
 char1 = Character("boy", [200, 400])
 char1.run_speed = char1.walk_speed + 6
 char1.jump_step = char1.jump_power = 12
@@ -280,7 +299,9 @@ char1.controllers = {"jump": pygame.K_w,
 
 def redraw_game_screen(*args, window):
     chars = args
-    window.screen.blit(window.background_image, (0, 0))
+    #window.screen.blit(window.background_image, (x_, y_))
+    window.screen.blit(window.background_image, (x_, 0))
+    #window.screen.blit(window.background_image, (window.x2, 0))
     window.screen.blit(animated_moon, (moon_width, moon_height))
     
     for char in chars:
@@ -302,8 +323,33 @@ moon_loop = 0
 moon_width = -300
 moon_height = -200
 play_loop = False
+
 while main_menu_loop:
     clock.tick(fps)
+
+    # if main_menu.x < main_menu.background_image.get_width() * -1:  # If our bg is at the -width then reset its position
+    #     main_menu.x = main_menu.background_image.get_width()
+    # elif main_menu.x > main_menu.background_image.get_width(): # If our bg is at the -width then reset its position
+    #     main_menu.x = main_menu.background_image.get_width() * -1
+    # if main_menu.x2 < main_menu.background_image.get_width() * -1:
+    #     main_menu.x2 = main_menu.background_image.get_width()
+    # elif main_menu.x2 > main_menu.background_image.get_width():
+    #     main_menu.x2 = 0
+
+    # if main_menu.y < main_menu.background_image.get_height() * -1:  # If our bg is at the -height then reset its position
+    #     main_menu.y = main_menu.background_image.get_height()
+    # if main_menu.y2 < main_menu.background_image.get_height() * -1:
+    #     main_menu.y2 = main_menu.background_image.get_height()
+
+    x = main_menu.x % main_menu.background_image.get_width()
+    x_ = x - main_menu.background_image.get_width()
+    # y = main_menu.y % main_menu.background_image.get_height()
+    # y_ = y - main_menu.background_image.get_height()
+    if x < main_menu.width:
+        main_menu.screen.blit(main_menu.background_image, (x, 0))
+    # if y < main_menu.height:
+    #     main_menu.screen.blit(main_menu.background_image, (0, y))
+
     
     moon_loop += 1
     if moon_loop == 5:
@@ -315,7 +361,6 @@ while main_menu_loop:
             moon_width = -300
             moon_height = -200
     
-
     for event in pygame.event.get():
         pos = pygame.mouse.get_pos()
         if event.type == pygame.QUIT:
@@ -352,8 +397,8 @@ while main_menu_loop:
         
     if is_collision(char.collision, char1.collision):
         print('hi')
-    redraw_game_screen(char1, char, window=main_menu)
+    redraw_game_screen(char, char1, window=main_menu)
     
     while play_loop:
-        print(".")
+        print("Crash crash crash C:")
 
