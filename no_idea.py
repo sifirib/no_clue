@@ -11,18 +11,27 @@ class Screen:
         self.height = sizes[1]
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.background_image = background_image
+        self.background = Background(self.screen)
         self.y2 = self.height  #self.background_image.get_height()
         self.x2 = self.width   #self.background_image.get_width()
         self.background_music = background_music
         self.caption = caption
         self.icon = icon
-    
+
     def load(self, what):
         if what == "music":
-            self.background_music = mixer.music.load(self.background_music)
+            if os.path.isfile(self.background_music):
+                file_ = self.background_music = mixer.music.load(self.background_music)
+            else:
+                raise Exception("Error loading file: " + self.background_music + " - Check filename and path?")
         elif what == "image":
-            self.background_image = pygame.image.load(self.background_image).convert()
-            
+            if os.path.isfile(self.background_image):
+                file_ = self.background_image = pygame.image.load(self.background_image).convert_alpha()
+            else:
+                raise Exception("Error loading file: " + self.background_music + " - Check filename and path?")
+        
+        return file_
+    
     def set_(self, what):
         if what == "screen":
             pygame.display.set_mode((self.width, self.height))
@@ -36,8 +45,71 @@ class Screen:
         
     def blit(self, image, positions):
         self.screen.blit(image, positions)
-        
-        
+
+def load_image(file_name, useColorKey=False):
+    if os.path.isfile(file_name):
+        image = pygame.image.load(file_name)
+        image = image.convert_alpha()
+        # Return the image
+        return image
+    else:
+        raise Exception("Error loading image: " + file_name + " - Check filename and path?")
+
+def parse_colour(colour):
+    if type(colour) == str:
+        # check to see if valid colour
+        return pygame.Color(colour)
+    else:
+        colourRGB = pygame.Color("white")
+        colourRGB.r = colour[0]
+        colourRGB.g = colour[1]
+        colourRGB.b = colour[2]
+
+        return colourRGB
+
+class Background():
+    def __init__(self, screen):
+        self.screen = screen
+        self.colour = pygame.Color("black")
+
+    def set_tiles(self, tiles):
+        if type(tiles) is str:
+            self.tiles = [[load_image(tiles)]]
+        elif type(tiles[0]) is str:
+            self.tiles = [[load_image(i) for i in tiles]]
+        else:
+            self.tiles = [[load_image(i) for i in row] for row in tiles]
+        self.stage_pos_x = 0
+        self.stage_pos_y = 0
+        self.tile_width = self.tiles[0][0].get_width()
+        self.tile_height = self.tiles[0][0].get_height()
+        self.screen.blit(self.tiles[0][0], [0, 0])
+        self.surface = self.screen.copy()
+
+    def scroll(self, x, y):
+        self.stage_pos_x -= x
+        self.stage_pos_y -= y
+        col = (self.stage_pos_x % (self.tile_width * len(self.tiles[0]))) // self.tile_height
+        xOff = (0 - self.stage_pos_x % self.tile_width)
+        row = (self.stage_pos_y % (self.tile_height * len(self.tiles))) // self.tile_height
+        yOff = (0 - self.stage_pos_y % self.tile_height)
+
+        col2 = ((self.stage_pos_x + self.tile_width) % (self.tile_width * len(self.tiles[0]))) // self.tile_width
+        row2 = ((self.stage_pos_y + self.tile_height) % (self.tile_height * len(self.tiles))) // self.tile_height
+        self.screen.blit(self.tiles[row][col], [xOff, yOff])
+        self.screen.blit(self.tiles[row][col2], [xOff + self.tile_width, yOff])
+        self.screen.blit(self.tiles[row2][col], [xOff, yOff + self.tile_height])
+        self.screen.blit(self.tiles[row2][col2], [xOff + self.tile_width, yOff + self.tile_height])
+
+        self.surface = self.screen.copy()
+
+    
+    def set_colour(self, colour):
+        self.colour = parse_colour(colour)
+        self.screen.fill(self.colour)
+        pygame.display.update()
+        self.surface = self.screen.copy()
+
 class Menu(Screen):
     def __init__(self, name, sizes, background_image, background_music, caption, icon):
         super().__init__(name, sizes, background_image, background_music, caption, icon)
@@ -64,7 +136,7 @@ class Button:
             win.blit(text, (
             self.x + (self.width / 2 - text.get_width() / 2), self.y + (self.height / 2 - text.get_height() / 2)))
 
-    def isOver(self, pos):
+    def is_over(self, pos):
         # Pos is the mouse position or a tuple of (x,y) coordinates
         if pos[0] > self.x and pos[0] < self.x + self.width:
             if pos[1] > self.y and pos[1] < self.y + self.height:
@@ -92,7 +164,6 @@ class Character(object):
         self.y = position[1]
         self.width = 64
         self.height = 64
-        
         self.walk_speed = 3
         self.run_speed = self.walk_speed + 4
         self.speed = self.walk_speed
@@ -106,7 +177,7 @@ class Character(object):
                             "left": pygame.K_LEFT,
                             "run": pygame.K_RSHIFT}
         
-        self.is_ = {"right":False, "left":False, "jump":False, "run":False, "dead":False}
+        self.is_ = {"right":False, "left":False, "jump":False, "fall":False, "run":False, "dead":False}
         self.counts = {"walk":0, "idle":0, "jump":0, "run":0, "dead":0}
         self.last_direction = "right"
         
@@ -124,11 +195,9 @@ class Character(object):
                         "Dead":[list(map(lambda img:pygame.transform.flip(img, True, False), self.sprits_r["Dead"][0])), self.sprits_r["Dead"][1]]    
                         }
         self.sprits = self.sprits_r
+        self.screen = main_menu
 
-    # @property 
-    # def run_speed(self): return self.walk_speed + 4
-    # @run_speed.setter
-    # def run_speed(self, value): self.run_speed = value
+
 
     @property
     def collision(self): return pygame.Rect(self.hitbox)
@@ -141,7 +210,7 @@ class Character(object):
     def hitbox(self, value): self.hitbox = value
 
     def walkto(self, direction):
-        if direction == "right" and self.x < main_menu.width - (self.width - 5):
+        if direction == "right" and self.x < self.screen.width - (self.width - 5):
             self.x += self.speed
         elif direction == "left" and self.x > 0 - 5:
             self.x -= self.speed
@@ -152,11 +221,18 @@ class Character(object):
                     self.y -= (self.jump_step * abs(self.jump_step)) * 0.33
                     self.jump_step -= 1
                     
+                    if self.jump_step <= 0:
+                        self.screen.background.scroll(0, -self.speed)
+                        #self.is_["fall"] = True
+                    else:
+                        self.screen.background.scroll(0, self.speed * 2)
+
                     if self.jump_power >= 20 and self.jump_step == -self.jump_power - 1:
                         self.is_["dead"] = True
             else: 
                 self.jump_step = self.jump_power
                 self.is_["jump"] = False
+                self.is_["fall"] = False
     
     
     def draw(self, window):
@@ -179,10 +255,10 @@ class Character(object):
             self.counts["dead"] += 1
         else:
             if self.is_["jump"]:
-                self.jumpto()
+                # self.jumpto()
                 window.blit(self.sprits["Jump"][0][self.counts["jump"]//4], (self.x, self.y))
             if self.is_["right"]:
-                self.walkto("right")
+                # self.walkto("right")
                 if self.is_["run"]:
                     window.blit(self.sprits["Run"][0][self.counts["run"]//4], (self.x, self.y))
                     self.counts["run"] += 1
@@ -191,7 +267,7 @@ class Character(object):
                     self.counts["walk"] += 1
                     
             elif self.is_["left"]:
-                self.walkto("left")
+                # self.walkto("left")
                 if self.is_["run"]:
                     window.blit(self.sprits["Run"][0][self.counts["run"]//4], (self.x, self.y))
                     self.counts["run"] += 1
@@ -214,16 +290,20 @@ class Character(object):
             if self.is_["right"]:
                 self.last_direction = "right"
                 self.sprits = self.sprits_r
+                
+                if self.screen.width - self.x <= self.screen.width / 4:
+                    self.screen.background.scroll(-self.speed, 0)
+                else:
+                    self.walkto("right")
 
-                if main_menu.width - self.x <= main_menu.width / 3:
-                    main_menu.x -= self.speed * 3
-                    main_menu.x2 -= self.speed * 3
-            else:
+            elif self.is_["left"]:
                 self.last_direction = "left"
                 self.sprits = self.sprits_l
-                if self.x <= main_menu.width / 3:
-                    main_menu.x += self.speed * 3
-                    main_menu.x2 += self.speed * 3
+                if self.x <= self.screen.width / 4:
+                    self.screen.background.scroll(self.speed, 0)
+                else:
+                    self.walkto("left")
+
         keys = pygame.key.get_pressed()
         
         if keys[self.controllers["right"]]:
@@ -244,15 +324,28 @@ class Character(object):
             self.is_["run"] = False
             self.counts["run"] = 0
 
-        if not self.is_["jump"]:
-            if keys[self.controllers["jump"]]:
-                self.is_["jump"] = True
-                self.is_["left"] = False
-                self.is_["right"] = False
-                self.counts["walk"] = 0
-                main_menu.y += self.jump_power * 3
-                main_menu.y2 += self.jump_power * 3
-                
+
+        if keys[self.controllers["jump"]]:
+            self.is_["jump"] = True
+        else:
+            self.counts["walk"] = 0
+        
+        
+    def action(self):
+        if self.is_["jump"]:
+            self.jumpto()
+        if self.is_["right"]:
+            self.walkto(self.last_direction)
+            self.screen.background.scroll(-self.speed, 0) 
+        elif self.is_["left"]:
+            self.walkto(self.last_direction)
+            self.screen.background.scroll(self.speed, 0)
+            
+
+          
+
+
+
 def is_collision(rect1, rect2):
 
     return rect1.colliderect(rect2)
@@ -261,15 +354,12 @@ def is_collision(rect1, rect2):
 pygame.init()
 
 # Create the screen
-main_menu = Menu("main", [800, 600], "space.png", "background_music.wav", "caption", "icon")
+main_menu = Menu("main", [800, 600], "space.png", "background_music.wav", "MOOM", "icon")
+main_menu.background.set_tiles([[main_menu.background_image] * 50])
 
 # Load media for screen
-main_menu.load("image")
-main_menu.y2 = main_menu.background_image.get_height()
-main_menu.x2 = main_menu.background_image.get_width()
 main_menu.load("music")
-animated_moon = pygame.image.load("moon.png")
-#animated_moon = pygame.image.load("moon.png").convert_alpha()
+animated_moon = pygame.image.load("moon.png").convert_alpha()
 
 
 # Display the screen
@@ -299,9 +389,7 @@ char1.controllers = {"jump": pygame.K_w,
 
 def redraw_game_screen(*args, window):
     chars = args
-    #window.screen.blit(window.background_image, (x_, y_))
-    window.screen.blit(window.background_image, (x_, 0))
-    #window.screen.blit(window.background_image, (window.x2, 0))
+
     window.screen.blit(animated_moon, (moon_width, moon_height))
     
     for char in chars:
@@ -327,30 +415,6 @@ play_loop = False
 while main_menu_loop:
     clock.tick(fps)
 
-    # if main_menu.x < main_menu.background_image.get_width() * -1:  # If our bg is at the -width then reset its position
-    #     main_menu.x = main_menu.background_image.get_width()
-    # elif main_menu.x > main_menu.background_image.get_width(): # If our bg is at the -width then reset its position
-    #     main_menu.x = main_menu.background_image.get_width() * -1
-    # if main_menu.x2 < main_menu.background_image.get_width() * -1:
-    #     main_menu.x2 = main_menu.background_image.get_width()
-    # elif main_menu.x2 > main_menu.background_image.get_width():
-    #     main_menu.x2 = 0
-
-    # if main_menu.y < main_menu.background_image.get_height() * -1:  # If our bg is at the -height then reset its position
-    #     main_menu.y = main_menu.background_image.get_height()
-    # if main_menu.y2 < main_menu.background_image.get_height() * -1:
-    #     main_menu.y2 = main_menu.background_image.get_height()
-
-    x = main_menu.x % main_menu.background_image.get_width()
-    x_ = x - main_menu.background_image.get_width()
-    # y = main_menu.y % main_menu.background_image.get_height()
-    # y_ = y - main_menu.background_image.get_height()
-    if x < main_menu.width:
-        main_menu.screen.blit(main_menu.background_image, (x, 0))
-    # if y < main_menu.height:
-    #     main_menu.screen.blit(main_menu.background_image, (0, y))
-
-    
     moon_loop += 1
     if moon_loop == 5:
         moon_loop = 1
@@ -370,30 +434,32 @@ while main_menu_loop:
         
         # MOUSE behaviours
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if leave_button.isOver(pos):
+            if leave_button.is_over(pos):
                 main_menu_loop = False
                 pygame.quit()
                 quit()
-            if play_button.isOver(pos):
+            if play_button.is_over(pos):
                 play_loop = True
         
         if event.type == pygame.MOUSEMOTION:
-            if play_button.isOver(pos):
+            if play_button.is_over(pos):
                 play_button.font_size = 20
             else:
                 play_button.font_size = 16
-            if leave_button.isOver(pos):
+            if leave_button.is_over(pos):
                 leave_button.font_size = 20
             else:
                 leave_button.font_size = 16
-            if settings_button.isOver(pos):
+            if settings_button.is_over(pos):
                 settings_button.font_size = 20
             else:
                 settings_button.font_size = 16
                 
-        # KEYBOARD behaviours
-        char.keyboard_behaviours()
-        char1.keyboard_behaviours()
+    # KEYBOARD behaviours
+    char.keyboard_behaviours()
+    char1.keyboard_behaviours()
+    char.action()
+    char1.action()
         
     if is_collision(char.collision, char1.collision):
         print('hi')
