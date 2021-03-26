@@ -1,7 +1,11 @@
 import pygame
 from pygame import mixer
 import os
-
+# from Background import Background 
+# from Screen import Screen, Menu
+# from Button import Button
+# from Character import Character
+# from SpaceShip import SpaceShip
 
 class Screen:
     def __init__(self, name, sizes, background_image, background_music, caption, icon):
@@ -20,15 +24,17 @@ class Screen:
 
     def load(self, what):
         if what == "music":
-            if os.path.isfile(self.background_music):
-                file_ = self.background_music = mixer.music.load(self.background_music)
+            path = os.path.join("sounds", self.background_music)
+            if os.path.isfile(path):
+                file_ = self.background_music = mixer.music.load(path)
             else:
-                raise Exception("Error loading file: " + self.background_music + " - Check filename and path?")
+                raise Exception("Error loading file: " + path + " - Check filename and path?")
         elif what == "image":
-            if os.path.isfile(self.background_image):
-                file_ = self.background_image = pygame.image.load(self.background_image).convert_alpha()
+            path = os.path.join("images", self.background_image)
+            if os.path.isfile(path):
+                file_ = self.background_image = pygame.image.load(path).convert_alpha()
             else:
-                raise Exception("Error loading file: " + self.background_music + " - Check filename and path?")
+                raise Exception("Error loading file: " + path + " - Check filename and path?")
         
         return file_
     
@@ -47,13 +53,14 @@ class Screen:
         self.screen.blit(image, positions)
 
 def load_image(file_name, useColorKey=False):
-    if os.path.isfile(file_name):
-        image = pygame.image.load(file_name)
+    path = os.path.join("images", file_name)
+    if os.path.isfile(path):
+        image = pygame.image.load(path)
         image = image.convert_alpha()
         # Return the image
         return image
     else:
-        raise Exception("Error loading image: " + file_name + " - Check filename and path?")
+        raise Exception("Error loading image: " + path + " - Check filename and path?")
 
 def parse_colour(colour):
     if type(colour) == str:
@@ -145,9 +152,9 @@ class Button:
         return False
 
 
-def get_and_load_sprits(foldername, character):
+def get_and_load_sprits(filename, character):
     current_path = os.getcwd()
-    path = os.path.join(current_path, "sprits", character.name, "resized", f"{foldername}", "")
+    path = os.path.join(current_path, "images", "sprits", character.name, "resized", f"{filename}", "")
     sprits = []
     for sprit in os.listdir(path):
         sprit = os.path.join(path, f"{sprit}")
@@ -164,6 +171,7 @@ class Character(object):
         self.y = position[1]
         self.width = 64
         self.height = 64
+
         self.walk_speed = 3
         self.run_speed = self.walk_speed + 4
         self.speed = self.walk_speed
@@ -195,7 +203,10 @@ class Character(object):
                         "Dead":[list(map(lambda img:pygame.transform.flip(img, True, False), self.sprits_r["Dead"][0])), self.sprits_r["Dead"][1]]    
                         }
         self.sprits = self.sprits_r
+        
+        self.visible = True
         self.screen = main_menu
+        
 
 
 
@@ -222,10 +233,10 @@ class Character(object):
                     self.jump_step -= 1
                     
                     if self.jump_step <= 0:
-                        self.screen.background.scroll(0, -self.speed)
+                        self.screen.background.scroll(0, int(-self.speed * 2))
                         #self.is_["fall"] = True
                     else:
-                        self.screen.background.scroll(0, self.speed * 2)
+                        self.screen.background.scroll(0, int(self.speed * 4))
 
                     if self.jump_power >= 20 and self.jump_step == -self.jump_power - 1:
                         self.is_["dead"] = True
@@ -233,10 +244,11 @@ class Character(object):
                 self.jump_step = self.jump_power
                 self.is_["jump"] = False
                 self.is_["fall"] = False
-    
-    
+
+
     def draw(self, window):
-        
+        if not self.visible: return 
+
         if self.counts["idle"] + 1 >= self.sprits["Idle"][1] * 4:
             self.counts["idle"] = 0
         if self.counts["walk"] + 1 >= self.sprits["Walk"][1] * 4:
@@ -291,18 +303,9 @@ class Character(object):
                 self.last_direction = "right"
                 self.sprits = self.sprits_r
                 
-                if self.screen.width - self.x <= self.screen.width / 4:
-                    self.screen.background.scroll(-self.speed, 0)
-                else:
-                    self.walkto("right")
-
             elif self.is_["left"]:
                 self.last_direction = "left"
                 self.sprits = self.sprits_l
-                if self.x <= self.screen.width / 4:
-                    self.screen.background.scroll(self.speed, 0)
-                else:
-                    self.walkto("left")
 
         keys = pygame.key.get_pressed()
         
@@ -327,22 +330,130 @@ class Character(object):
 
         if keys[self.controllers["jump"]]:
             self.is_["jump"] = True
-        else:
-            self.counts["walk"] = 0
         
         
     def action(self):
+        
         if self.is_["jump"]:
             self.jumpto()
         if self.is_["right"]:
-            self.walkto(self.last_direction)
-            self.screen.background.scroll(-self.speed, 0) 
+            if self.screen.width - self.x <= self.screen.width / 4:
+                self.screen.background.scroll(-self.speed, 0)
+            else:
+                self.walkto("right")
+            # self.walkto(self.last_direction)
+            # self.screen.background.scroll(-self.speed, 0) 
         elif self.is_["left"]:
-            self.walkto(self.last_direction)
-            self.screen.background.scroll(self.speed, 0)
+
+            if self.x <= self.screen.width / 4:
+                self.screen.background.scroll(self.speed, 0)
+            else:
+                self.walkto("left")
+            # self.walkto(self.last_direction)
+            # self.screen.background.scroll(self.speed, 0)
+        else:
+            self.screen.background.scroll(0, 0)
             
 
-          
+
+
+class SpaceShip(object):
+
+    class Thruster(object):
+        def __init__(self, ship):
+            self.ship  = ship
+            self.sprit = ship.sprits["thruster_idle"]
+
+        
+        @property
+        def x(self): return self.ship.x - 50
+        @x.setter
+        def x(self, value): self.x = value
+        @property
+        def y(self): return self.ship.y + 40
+        @y.setter
+        def y(self, value): self.y = value
+
+        def draw(self):
+            self.ship.screen.blit(self.sprit, (self.x, self.y))
+
+        def action(self):
+            if self.ship.is_["right"] or self.ship.is_["left"]:
+                self.sprit = self.ship.sprits["thruster_power"]
+            else:
+                self.sprit = self.ship.sprits["thruster_idle"]
+
+    def __init__(self, name, pilot, screen, position):
+        self.name = name
+        self.x = position[0]
+        self.y = position[1]
+        self.speed = 30
+        self.pilot = pilot
+        self.screen = screen
+        
+        self.is_ = {"right":False, "left":False}
+        self.controllers = pilot.controllers
+        self.sprits = {
+                        "ship":pygame.transform.scale(load_image("4_Red.png"), (128, 128)), 
+                        "thruster_idle":pygame.transform.scale(load_image("1.png"), (64, 64)), 
+                        "thruster_power":pygame.transform.scale(load_image("2.png"), (64, 64))
+                        }
+
+        self.thruster = self.Thruster(self)
+
+    
+    def draw(self):
+        self.screen.blit(self.sprits["ship"], (self.x, self.y))
+        self.thruster.draw()
+
+
+    def keyboard_behaviours(self):
+        keys = pygame.key.get_pressed()
+        
+        if keys[self.controllers["right"]]:
+            self.is_["right"] = True
+            self.is_["left"] = False
+        elif keys[self.controllers["left"]]:
+            self.is_["left"] = True
+            self.is_["right"] = False
+        else:
+            self.is_["right"] = False
+            self.is_["left"] = False
+        # if keys[self.controllers["run"]]:
+        #     self.speed = self.run_speed
+        #     self.is_["run"] = True
+        # else:
+        #     self.speed = self.walk_speed
+        #     self.is_["run"] = False
+        #     self.counts["run"] = 0
+
+
+        # if keys[self.controllers["jump"]]:
+        #     self.is_["jump"] = True
+
+
+    def action(self):
+        self.thruster.action()
+        
+        if self.is_["right"]:
+            if self.screen.width - self.x <= self.screen.width / 4:
+                self.screen.background.scroll(-self.speed, 0)
+            else:
+                self.x += self.speed
+            # self.walkto(self.last_direction)
+            # self.screen.background.scroll(-self.speed, 0) 
+        elif self.is_["left"]:
+
+            if self.x <= self.screen.width / 4:
+                self.screen.background.scroll(self.speed, 0)
+            else:
+                self.x -= self.speed
+            # self.walkto(self.last_direction)
+            # self.screen.background.scroll(self.speed, 0)
+        else:
+            self.screen.background.scroll(0, 0)
+
+
 
 
 
@@ -355,12 +466,11 @@ pygame.init()
 
 # Create the screen
 main_menu = Menu("main", [800, 600], "space.png", "background_music.wav", "MOOM", "icon")
-main_menu.background.set_tiles([[main_menu.background_image] * 50])
+main_menu.background.set_tiles([[main_menu.background_image]])
 
 # Load media for screen
 main_menu.load("music")
-animated_moon = pygame.image.load("moon.png").convert_alpha()
-
+animated_moon = pygame.image.load(os.path.join("images", "moon.png")).convert_alpha()
 
 # Display the screen
 main_menu.set_("screen") 
@@ -375,10 +485,10 @@ settings_button = Button((0, 100, 0), 20, 350, 120, 80, 'Options')
 leave_button = Button((0, 100, 0), 20, 400, 120, 80, 'Leave')
 
 # Character
-char = Character("girl", [100, 400])
+char = Character("girl", [350, 400])
 char.jump_step = char.jump_power = 10
 
-char1 = Character("boy", [200, 400])
+char1 = Character("boy", [400, 400])
 char1.run_speed = char1.walk_speed + 6
 char1.jump_step = char1.jump_power = 12
 char1.controllers = {"jump": pygame.K_w, 
@@ -386,12 +496,16 @@ char1.controllers = {"jump": pygame.K_w,
                      "left": pygame.K_a,
                      "run": pygame.K_LSHIFT}
 
+ship = SpaceShip("4_Red.png", char, main_menu, [300, 300])
+ship1 = SpaceShip("4_Red.png", char1, main_menu, [300, 400])
+
 
 def redraw_game_screen(*args, window):
     chars = args
 
     window.screen.blit(animated_moon, (moon_width, moon_height))
-    
+    ship.draw()
+    ship1.draw()
     for char in chars:
         char.draw(window.screen)
         
@@ -413,6 +527,7 @@ moon_height = -200
 play_loop = False
 
 while main_menu_loop:
+    # print(int(pygame.time.Clock().get_fps()))
     clock.tick(fps)
 
     moon_loop += 1
@@ -460,6 +575,10 @@ while main_menu_loop:
     char1.keyboard_behaviours()
     char.action()
     char1.action()
+    ship.keyboard_behaviours()
+    ship1.keyboard_behaviours()
+    ship.action()
+    ship1.action()
         
     if is_collision(char.collision, char1.collision):
         print('hi')
