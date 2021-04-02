@@ -21,7 +21,7 @@ class Screen:
         self.background_music = background_music
         self.caption = caption
         self.icon = icon
-
+        
     def load(self, what):
         if what == "music":
             path = os.path.join("sounds", self.background_music)
@@ -363,62 +363,124 @@ class SpaceShip(object):
         def __init__(self, ship):
             self.ship  = ship
             self.sprit = ship.sprits["thruster_idle"]
-
+    
         
         @property
-        def x(self): return self.ship.x - 50
+        def x(self): return self.ship.x + - 115
         @x.setter
         def x(self, value): self.x = value
         @property
-        def y(self): return self.ship.y + 40
+        def y(self): return self.ship.y - 27
         @y.setter
         def y(self, value): self.y = value
 
         def draw(self):
             self.ship.screen.blit(self.sprit, (self.x, self.y))
-
+        
         def action(self):
             if self.ship.is_["right"] or self.ship.is_["left"]:
                 self.sprit = self.ship.sprits["thruster_power"]
             else:
                 self.sprit = self.ship.sprits["thruster_idle"]
 
+
     def __init__(self, name, pilot, screen, position):
         self.name = name
         self.x = position[0]
         self.y = position[1]
         self.speed = 30
+        self.sensvity = 5
+        self.angle = 0
+        self.angle_ = False
+        self.origin = (self.x, self.y)
         self.pilot = pilot
         self.screen = screen
         
         self.is_ = {"right":False, "left":False}
-        self.controllers = pilot.controllers
+        aux_controllers = self.pilot.controllers
+        aux_controllers.update({"crouch": pygame.K_DOWN})
+        self.controllers = aux_controllers
         self.sprits = {
                         "ship":pygame.transform.scale(load_image("4_Red.png"), (128, 128)), 
                         "thruster_idle":pygame.transform.scale(load_image("1.png"), (64, 64)), 
                         "thruster_power":pygame.transform.scale(load_image("2.png"), (64, 64))
                         }
 
+        self.rect = self.sprits["ship"].get_rect()
         self.thruster = self.Thruster(self)
-
-    
-    def draw(self):
-        self.screen.blit(self.sprits["ship"], (self.x, self.y))
-        self.thruster.draw()
+        self.location = self.sprits["ship"].get_rect(center=self.rect.center)
+        self.image_copy = self.sprits["ship"]
 
 
-    def keyboard_behaviours(self):
-        keys = pygame.key.get_pressed()
+
+    def set_origin(self, image, pos, originPos, angle, rotate = False):
+        #if self.angle_ == False: return self.origin
+        # calcaulate the axis aligned bounding box of the rotated image
+        w, h       = image.get_size()
+        box        = [pygame.math.Vector2(p) for p in [(0, 0), (w, 0), (w, -h), (0, -h)]]
+        box_rotate = [p.rotate(angle) for p in box]
+        min_box    = (min(box_rotate, key=lambda p: p[0])[0], min(box_rotate, key=lambda p: p[1])[1])
+        max_box    = (max(box_rotate, key=lambda p: p[0])[0], max(box_rotate, key=lambda p: p[1])[1])
+
+        # calculate the translation of the pivot 
+        pivot        = pygame.math.Vector2(originPos[0], -originPos[1])
+        pivot_rotate = pivot.rotate(angle)
+        pivot_move   = pivot_rotate - pivot
+
+        # calculate the upper left origin of the rotated image
+        origin = ((pos[0] - originPos[0] + min_box[0] - pivot_move[0]), (pos[1] - originPos[1] - max_box[1] + pivot_move[1]))
+
+        self.origin = origin
+
+        return
+
+    def rotate(self, surf, image, angle):
+        self.image_copy = pygame.transform.rotate(image, angle)
         
-        if keys[self.controllers["right"]]:
-            self.is_["right"] = True
-            self.is_["left"] = False
-        elif keys[self.controllers["left"]]:
-            self.is_["left"] = True
-            self.is_["right"] = False
+        # rotate and blit the image
+        # surf.blit(self.image_copy, self.origin)
+
+        # draw rectangle around the image
+        pygame.draw.rect(surf, (255, 0, 0), (*self.origin, *self.image_copy.get_size()),2)
+        
+        return
+
+    def draw(self):
+        
+        w, h = self.sprits["ship"].get_size()
+        
+        if self.angle_:
+            self.set_origin(self.sprits["ship"], (self.x, self.y), (w/2, h/2), self.angle)
+            self.rotate(self.screen.screen, self.sprits["ship"], self.angle)
         else:
-            self.is_["right"] = False
-            self.is_["left"] = False
+            self.set_origin(self.sprits["ship"], (self.x, self.y), (w/2, h/2), 0)
+
+        self.screen.blit(self.image_copy, self.origin)
+        self.thruster.draw()
+        
+    def keyboard_behaviours(self):
+        #if self.angle >= 360: self.angle = 0
+
+        keys = pygame.key.get_pressed()
+        if keys[self.controllers["jump"]]:
+            self.x += self.speed
+        elif keys[self.controllers["crouch"]]:
+            self.x -= self.speed
+        else:
+            pass
+
+        if keys[self.controllers["right"]]:
+            self.angle_ = True
+            self.angle += 360 - self.sensvity
+        elif keys[self.controllers["left"]]:
+            self.angle_ = True
+            self.angle += self.sensvity
+
+        else:
+            self.angle_ = False
+
+        
+
         # if keys[self.controllers["run"]]:
         #     self.speed = self.run_speed
         #     self.is_["run"] = True
@@ -438,8 +500,7 @@ class SpaceShip(object):
         if self.is_["right"]:
             if self.screen.width - self.x <= self.screen.width / 4:
                 self.screen.background.scroll(-self.speed, 0)
-            else:
-                self.x += self.speed
+
             # self.walkto(self.last_direction)
             # self.screen.background.scroll(-self.speed, 0) 
         elif self.is_["left"]:
@@ -498,16 +559,16 @@ char1.controllers = {"jump": pygame.K_w,
 
 ship = SpaceShip("4_Red.png", char, main_menu, [300, 300])
 ship1 = SpaceShip("4_Red.png", char1, main_menu, [300, 400])
-
+ship1.controllers["crouch"] = pygame.K_s
 
 def redraw_game_screen(*args, window):
-    chars = args
+    objects = args
 
     window.screen.blit(animated_moon, (moon_width, moon_height))
     ship.draw()
     ship1.draw()
-    for char in chars:
-        char.draw(window.screen)
+    for obj in objects:
+        obj.draw(window.screen)
         
     play_button.draw(window.screen)
     settings_button.draw(window.screen)
@@ -546,7 +607,7 @@ while main_menu_loop:
             main_menu_loop = False
             pygame.quit()
             quit()
-        
+
         # MOUSE behaviours
         if event.type == pygame.MOUSEBUTTONDOWN:
             if leave_button.is_over(pos):
