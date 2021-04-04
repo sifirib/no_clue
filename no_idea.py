@@ -1,6 +1,7 @@
 import pygame
 from pygame import mixer
 import os
+import math
 # from Background import Background 
 # from Screen import Screen, Menu
 # from Button import Button
@@ -463,7 +464,10 @@ class SpaceShip(object):
 
         keys = pygame.key.get_pressed()
         if keys[self.controllers["jump"]]:
-            self.x += self.speed
+            angle_rad = math.radians(self.angle % 360)
+            self.x += math.cos(angle_rad) * self.speed
+            self.y -= math.sin(angle_rad) * self.speed
+
         elif keys[self.controllers["crouch"]]:
             self.x -= self.speed
         else:
@@ -471,7 +475,7 @@ class SpaceShip(object):
 
         if keys[self.controllers["right"]]:
             self.angle_ = True
-            self.angle += 360 - self.sensvity
+            self.angle -= self.sensvity
         elif keys[self.controllers["left"]]:
             self.angle_ = True
             self.angle += self.sensvity
