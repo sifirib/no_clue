@@ -389,13 +389,16 @@ class SpaceShip(object):
         self.name = name
         self.x = position[0]
         self.y = position[1]
-        self.speed = 30
+        self.old_x = self.x
+        self.old_y = self.y
+        self.speed = 5
         self.sensvity = 5
         self.angle = 0
         self.angle_ = False
         self.origin = (self.x, self.y)
         self.pilot = pilot
         self.screen = screen
+        self.poses = []
         
         self.is_ = {"right":False, "left":False}
         aux_controllers = self.pilot.controllers
@@ -461,18 +464,38 @@ class SpaceShip(object):
         
     def keyboard_behaviours(self):
         #if self.angle >= 360: self.angle = 0
-
+        
         keys = pygame.key.get_pressed()
         if keys[self.controllers["jump"]]:
-            angle_rad = math.radians(self.angle % 360)
-            self.x += math.cos(angle_rad) * self.speed
-            self.y -= math.sin(angle_rad) * self.speed
+            self.poses.append([self.x, self.y])
+            
+            if len(self.poses) >= 2:
+                self.old_x = self.poses[-2][0]
+                self.old_y = self.poses[-2][1]
 
+
+            angle_rad = math.radians(self.angle % 360)
+            self.x -= (self.x - self.old_x) * 0.8 - math.cos(angle_rad) * self.speed
+            self.y += (self.y - self.old_y) * 0.8 - math.sin(angle_rad) * self.speed
+ 
         elif keys[self.controllers["crouch"]]:
-            self.x -= self.speed
+            self.poses.append([self.x, self.y])
+            
+            if len(self.poses) >= 2:
+                self.old_x = self.poses[-2][0]
+                self.old_y = self.poses[-2][1]
+
+
+            angle_rad = math.radians(self.angle % 360)
+            self.x += (self.x - self.old_x) * 0.8 - math.cos(angle_rad) * self.speed
+            self.y -= (self.y - self.old_y) * 0.8 - math.sin(angle_rad) * self.speed
+
         else:
             pass
-
+        print(f"x = {int(self.x)}, old_x = {int(self.old_x)}")
+        print(f"y = {int(self.y)}, old_y = {int(self.old_y)}")
+        print("\n")
+       
         if keys[self.controllers["right"]]:
             self.angle_ = True
             self.angle -= self.sensvity
@@ -511,8 +534,8 @@ class SpaceShip(object):
 
             if self.x <= self.screen.width / 4:
                 self.screen.background.scroll(self.speed, 0)
-            else:
-                self.x -= self.speed
+            # else:
+            #     self.x -= self.speed
             # self.walkto(self.last_direction)
             # self.screen.background.scroll(self.speed, 0)
         else:
@@ -591,6 +614,7 @@ moon_width = -300
 moon_height = -200
 play_loop = False
 
+poses = []
 while main_menu_loop:
     # print(int(pygame.time.Clock().get_fps()))
     clock.tick(fps)
@@ -638,15 +662,15 @@ while main_menu_loop:
     # KEYBOARD behaviours
     char.keyboard_behaviours()
     char1.keyboard_behaviours()
-    char.action()
-    char1.action()
+    # char.action()
+    # char1.action()
     ship.keyboard_behaviours()
     ship1.keyboard_behaviours()
     ship.action()
     ship1.action()
         
     if is_collision(char.collision, char1.collision):
-        print('hi')
+        pass
     redraw_game_screen(char, char1, window=main_menu)
     
     while play_loop:
