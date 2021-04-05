@@ -356,7 +356,11 @@ class Character(object):
             self.screen.background.scroll(0, 0)
             
 
+class Planet(object):
 
+    def __init__(self):
+        self.air_friction = 0.015
+        self.gravity = 10
 
 class SpaceShip(object):
 
@@ -367,11 +371,11 @@ class SpaceShip(object):
     
         
         @property
-        def x(self): return self.ship.x + - 115
+        def x(self): return self.ship.x
         @x.setter
         def x(self, value): self.x = value
         @property
-        def y(self): return self.ship.y - 27
+        def y(self): return self.ship.y
         @y.setter
         def y(self, value): self.y = value
 
@@ -379,7 +383,7 @@ class SpaceShip(object):
             self.ship.screen.blit(self.sprit, (self.x, self.y))
         
         def action(self):
-            if self.ship.is_["right"] or self.ship.is_["left"]:
+            if self.ship.is_["forward"] or self.ship.is_["left"]:
                 self.sprit = self.ship.sprits["thruster_power"]
             else:
                 self.sprit = self.ship.sprits["thruster_idle"]
@@ -391,32 +395,46 @@ class SpaceShip(object):
         self.y = position[1]
         self.old_x = self.x
         self.old_y = self.y
-        self.speed = 5
-        self.sensvity = 5
+        self.speed = self.max_speed = 10
+        self.sensvity = 7.5
         self.angle = 0
         self.angle_ = False
         self.origin = (self.x, self.y)
         self.pilot = pilot
         self.screen = screen
-        self.poses = []
-        
-        self.is_ = {"right":False, "left":False}
+
+        self.is_ = {"right":0, "left":0, "forward":0, "backward":0}
+
         aux_controllers = self.pilot.controllers
         aux_controllers.update({"crouch": pygame.K_DOWN})
         self.controllers = aux_controllers
+
         self.sprits = {
                         "ship":pygame.transform.scale(load_image("4_Red.png"), (128, 128)), 
                         "thruster_idle":pygame.transform.scale(load_image("1.png"), (64, 64)), 
                         "thruster_power":pygame.transform.scale(load_image("2.png"), (64, 64))
                         }
-
-        self.rect = self.sprits["ship"].get_rect()
+        
         self.thruster = self.Thruster(self)
-        self.location = self.sprits["ship"].get_rect(center=self.rect.center)
+        # self.location = self.sprits["ship"].get_rect(center=self.rect.center)
         self.image_copy = self.sprits["ship"]
 
+    @property
+    def pitch(self): return self.is_["forward"] - self.is_["backward"]
+    @pitch.setter
+    def pitch(self, value): self.pitch = value
 
+    @property
+    def angle_rad(self): return math.radians(self.angle)
+    @angle_rad.setter
+    def angle_rad(self, value): self.angle_rad = value
 
+    @property
+    def rect(self): return self.image_copy.get_rect()
+    @rect.setter
+    def rect(self, value): self.rect = value
+
+    
     def set_origin(self, image, pos, originPos, angle, rotate = False):
         #if self.angle_ == False: return self.origin
         # calcaulate the axis aligned bounding box of the rotated image
@@ -445,7 +463,7 @@ class SpaceShip(object):
         # surf.blit(self.image_copy, self.origin)
 
         # draw rectangle around the image
-        pygame.draw.rect(surf, (255, 0, 0), (*self.origin, *self.image_copy.get_size()),2)
+        pygame.draw.rect(surf, (255, 0, 0), (*self.origin, *self.image_copy.get_size()), 2)
         
         return
 
@@ -467,34 +485,18 @@ class SpaceShip(object):
         
         keys = pygame.key.get_pressed()
         if keys[self.controllers["jump"]]:
-            self.poses.append([self.x, self.y])
-            
-            if len(self.poses) >= 2:
-                self.old_x = self.poses[-2][0]
-                self.old_y = self.poses[-2][1]
+            self.is_["forward"] = 1
+            self.is_["backward"] = 0
+            self.speed = self.max_speed
 
-
-            angle_rad = math.radians(self.angle % 360)
-            self.x -= (self.x - self.old_x) * 0.8 - math.cos(angle_rad) * self.speed
-            self.y += (self.y - self.old_y) * 0.8 - math.sin(angle_rad) * self.speed
- 
         elif keys[self.controllers["crouch"]]:
-            self.poses.append([self.x, self.y])
-            
-            if len(self.poses) >= 2:
-                self.old_x = self.poses[-2][0]
-                self.old_y = self.poses[-2][1]
-
-
-            angle_rad = math.radians(self.angle % 360)
-            self.x += (self.x - self.old_x) * 0.8 - math.cos(angle_rad) * self.speed
-            self.y -= (self.y - self.old_y) * 0.8 - math.sin(angle_rad) * self.speed
+            self.is_["backward"] = 1
+            self.is_["forward"] = 0
+            self.speed = self.max_speed
 
         else:
             pass
-        print(f"x = {int(self.x)}, old_x = {int(self.old_x)}")
-        print(f"y = {int(self.y)}, old_y = {int(self.old_y)}")
-        print("\n")
+            
        
         if keys[self.controllers["right"]]:
             self.angle_ = True
@@ -506,24 +508,33 @@ class SpaceShip(object):
         else:
             self.angle_ = False
 
-        
-
-        # if keys[self.controllers["run"]]:
-        #     self.speed = self.run_speed
-        #     self.is_["run"] = True
-        # else:
-        #     self.speed = self.walk_speed
-        #     self.is_["run"] = False
-        #     self.counts["run"] = 0
-
-
-        # if keys[self.controllers["jump"]]:
-        #     self.is_["jump"] = True
 
 
     def action(self):
         self.thruster.action()
         
+        if self.speed > 0 and self.pitch != 0:
+            self.speed -= self.max_speed * earth.air_friction
+
+        else:
+            self.speed = 0
+
+        if self.pitch == 1:
+
+            angle_rad = math.radians(self.angle % 360)
+            self.x += math.cos(angle_rad) * self.speed
+            self.y -= math.sin(angle_rad) * self.speed
+
+
+        elif self.pitch == -1:
+
+            angle_rad = math.radians(self.angle % 360)
+            self.x -= math.cos(angle_rad) * self.speed
+            self.y += math.sin(angle_rad) * self.speed
+
+        else:
+            pass
+            
         if self.is_["right"]:
             if self.screen.width - self.x <= self.screen.width / 4:
                 self.screen.background.scroll(-self.speed, 0)
@@ -531,7 +542,6 @@ class SpaceShip(object):
             # self.walkto(self.last_direction)
             # self.screen.background.scroll(-self.speed, 0) 
         elif self.is_["left"]:
-
             if self.x <= self.screen.width / 4:
                 self.screen.background.scroll(self.speed, 0)
             # else:
@@ -571,6 +581,9 @@ main_menu.set_("caption")
 play_button = Button((0, 100, 0), 20, 300, 120, 80, 'Play')
 settings_button = Button((0, 100, 0), 20, 350, 120, 80, 'Options')
 leave_button = Button((0, 100, 0), 20, 400, 120, 80, 'Leave')
+
+#Planet
+earth = Planet()
 
 # Character
 char = Character("girl", [350, 400])
@@ -614,8 +627,7 @@ moon_width = -300
 moon_height = -200
 play_loop = False
 
-poses = []
-while main_menu_loop:
+hwhile main_menu_loop:
     # print(int(pygame.time.Clock().get_fps()))
     clock.tick(fps)
 
