@@ -371,11 +371,23 @@ class SpaceShip(object):
     
         
         @property
-        def x(self): return self.ship.x
+        def x(self): 
+            if len(self.ship.poses) > 1:
+
+                return self.ship.poses[-2][0]
+
+            else:
+                return self.ship.poses[-1][0]
         @x.setter
         def x(self, value): self.x = value
         @property
-        def y(self): return self.ship.y
+        def y(self):
+            if len(self.ship.poses) > 1:
+
+                return self.ship.poses[-2][1]
+
+            else:
+                return self.ship.poses[-1][1]
         @y.setter
         def y(self, value): self.y = value
 
@@ -396,12 +408,13 @@ class SpaceShip(object):
         self.old_x = self.x
         self.old_y = self.y
         self.speed = self.max_speed = 10
-        self.sensvity = 7.5
+        self.sensvity = 7
         self.angle = 0
         self.angle_ = False
         self.origin = (self.x, self.y)
         self.pilot = pilot
         self.screen = screen
+        self.poses = [[self.x, self.y]]
 
         self.is_ = {"right":0, "left":0, "forward":0, "backward":0}
 
@@ -514,6 +527,7 @@ class SpaceShip(object):
         self.thruster.action()
         
         if self.speed > 0 and self.pitch != 0:
+            self.poses.append([self.x, self.y])
             self.speed -= self.max_speed * earth.air_friction
 
         else:
@@ -627,7 +641,8 @@ moon_width = -300
 moon_height = -200
 play_loop = False
 
-hwhile main_menu_loop:
+poses = []
+while main_menu_loop:
     # print(int(pygame.time.Clock().get_fps()))
     clock.tick(fps)
 
@@ -674,8 +689,8 @@ hwhile main_menu_loop:
     # KEYBOARD behaviours
     char.keyboard_behaviours()
     char1.keyboard_behaviours()
-    # char.action()
-    # char1.action()
+    char.action()
+    char1.action()
     ship.keyboard_behaviours()
     ship1.keyboard_behaviours()
     ship.action()
