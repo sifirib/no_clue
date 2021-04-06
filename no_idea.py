@@ -420,28 +420,22 @@ class SpaceShip(object):
     
         
         @property
-        def x(self): 
-            dx = self.ship.sprit_copy.get_width() / 2 - self.ship.offsets["thruster"]
-            print("dx", dx)
+        def x(self):
+            print("dx:", self.ship.dx, "self.ship.x:", int(self.ship.x))
 
-            return dx * (math.cos(self.ship.angle) - math.sin(self.ship.angle))
-        @x.setter
-        def x(self, value): self.x = value
-        
+            return self.ship.dx * math.cos(self.ship.angle_rad) - self.ship.dy * math.sin(self.ship.angle_rad)
         @property
-        def y(self): 
-            dy = self.ship.sprit_copy.get_height() / 2 - self.ship.offsets["thruster"]
-            print("dy", dy)
+        def y(self):
+            print("dy:", self.ship.dy, "self.ship.y:", int(self.ship.y))
 
-            return dy * (math.cos(self.ship.angle) + math.sin(self.ship.angle))
-        @y.setter
-        def y(self, value): self.y = value
+            return self.ship.x * math.sin(self.ship.angle_rad) + self.ship.dy * math.cos(self.ship.angle_rad)
+
 
         def draw(self):
             w, h = self.sprit_copy.get_size()
         
             if self.ship.angle_:
-                print("a")
+                
                 set_origin(self, self.sprit, (self.x, self.y), (w/2, h/2), self.ship.angle)
                 rotate(self, self.ship.screen.screen, self.sprit, self.ship.angle)
             else:
@@ -488,7 +482,7 @@ class SpaceShip(object):
                         "thruster_power":pygame.transform.scale(load_image("2.png"), (64, 64))
                         }
         self.sprit_copy = self.sprits["ship"]
-        self.offsets = {"thruster":400}
+        self.offsets = {"thruster":1}
         self.thruster = self.Thruster(self)
         
         # self.location = self.sprits["ship"].get_rect(center=self.rect.center)
@@ -498,6 +492,12 @@ class SpaceShip(object):
     # def offsets(self): 
     #     offsets = {"thruster":self.thrus}
     #     return 
+
+    @property
+    def dx(self): return self.x + self.offsets["thruster"] + self.sprit_copy.get_width() / 2
+    @property
+    def dy(self): return self.y + self.offsets["thruster"] + self.sprit_copy.get_height() / 2
+
     @property
     def speed(self): return abs(self.vel)
     @speed.setter
@@ -600,7 +600,7 @@ class SpaceShip(object):
         self.x += math.cos(self.angle_rad) * self.vel
         self.y -= math.sin(self.angle_rad) * self.vel
         
-            
+
         if self.is_["right"]:
             if self.screen.width - self.x <= self.screen.width / 4:
                 self.screen.background.scroll(-self.speed, 0)
