@@ -153,13 +153,28 @@ class Button:
         return False
 
 
-def get_and_load_sprits(filename, character):
+def get_and_load_sprits(filename, character, sizes=(0, 0)):
+    
+    # Resizing sprits in game will take time... so, using already resized sprites will be more sensible in this case but will take more storage 
+    
     current_path = os.getcwd()
     path = os.path.join(current_path, "images", "sprits", character.name, "resized", f"{filename}", "")
+
+    def proc(sprit, sizes):
+        global path
+
+        if sizes == (0, 0):
+
+            return pygame.image.load(sprit)
+        else:
+            path = os.path.join(current_path, "images", "sprits", character.name, "original", f"{filename}", "")
+
+            return pygame.transform.scale(pygame.image.load(sprit), sizes)
+    
     sprits = []
     for sprit in os.listdir(path):
         sprit = os.path.join(path, f"{sprit}")
-        sprits.append(pygame.image.load(sprit))
+        sprits.append(proc(sprit, sizes))
 
     return (sprits, len(sprits))
 
@@ -190,7 +205,7 @@ class Character(object):
         self.counts = {"walk":0, "idle":0, "jump":0, "run":0, "dead":0}
         self.last_direction = "right"
         
-        self.sprits_r = {"Walk":get_and_load_sprits("Walk", self),
+        self.sprits_r = {"Walk":get_and_load_sprits("Walk", self), # "Walk":get_and_load_sprits("Walk", self, (64, 64))
                        "Run":get_and_load_sprits("Run", self),
                        "Idle":get_and_load_sprits("Idle", self),
                        "Jump":get_and_load_sprits("Jump", self),
@@ -407,7 +422,10 @@ class SpaceShip(object):
         self.y = position[1]
         self.old_x = self.x
         self.old_y = self.y
-        self.speed = self.max_speed = 10
+        self.vel = 0
+        self.normal_speed = 10
+        self.max_speed = 20
+        self.accel = 0.5
         self.sensvity = 7
         self.angle = 0
         self.angle_ = False
@@ -431,6 +449,12 @@ class SpaceShip(object):
         self.thruster = self.Thruster(self)
         # self.location = self.sprits["ship"].get_rect(center=self.rect.center)
         self.image_copy = self.sprits["ship"]
+
+
+    @property
+    def speed(self): return abs(self.vel)
+    @speed.setter
+    def speed(self, value): self.speed = value
 
     @property
     def pitch(self): return self.is_["forward"] - self.is_["backward"]
@@ -498,16 +522,25 @@ class SpaceShip(object):
         
         keys = pygame.key.get_pressed()
         if keys[self.controllers["jump"]]:
-            self.is_["forward"] = 1
             self.is_["backward"] = 0
-            self.speed = self.max_speed
+            self.is_["forward"] = 1
+            if self.speed < self.max_speed:
+                self.vel += self.accel
+                if self.speed > self.max_speed:
+                    self.vel = self.max_speed
 
         elif keys[self.controllers["crouch"]]:
             self.is_["backward"] = 1
             self.is_["forward"] = 0
-            self.speed = self.max_speed
+            if self.speed < self.max_speed:
+                self.vel -= self.accel
+                if self.speed > self.max_speed:
+                    self.vel = -self.max_speed
 
+        
         else:
+            self.is_["backward"] = 0
+            self.is_["forward"] = 0
             pass
             
        
@@ -525,29 +558,31 @@ class SpaceShip(object):
 
     def action(self):
         self.thruster.action()
+        print(self.speed)
         
-        if self.speed > 0 and self.pitch != 0:
-            self.poses.append([self.x, self.y])
-            self.speed -= self.max_speed * earth.air_friction
-
-        else:
-            self.speed = 0
-
-        if self.pitch == 1:
-
-            angle_rad = math.radians(self.angle % 360)
-            self.x += math.cos(angle_rad) * self.speed
-            self.y -= math.sin(angle_rad) * self.speed
-
-
-        elif self.pitch == -1:
-
-            angle_rad = math.radians(self.angle % 360)
-            self.x -= math.cos(angle_rad) * self.speed
-            self.y += math.sin(angle_rad) * self.speed
+        if self.pitch == 0:
+            # self.poses.append([self.x, self.y])
+            if self.vel > 0:
+                self.vel -= self.max_speed * earth.air_friction
+                if self.vel < 0:
+                    self.vel = 0
+            
+            elif self.vel < 0:
+                self.vel += self.max_speed * earth.air_friction
+                if self.vel > 0:
+                    self.vel = 0 
+            
+            else:
+                # self.vel = 0
+                pass
 
         else:
             pass
+        
+        self.x += math.cos(self.angle_rad) * self.vel
+        self.y -= math.sin(self.angle_rad) * self.vel
+            
+
             
         if self.is_["right"]:
             if self.screen.width - self.x <= self.screen.width / 4:
@@ -577,7 +612,7 @@ def is_collision(rect1, rect2):
 pygame.init()
 
 # Create the screen
-main_menu = Menu("main", [800, 600], "space.png", "background_music.wav", "MOOM", "icon")
+main_menu = Menu("main", [1024, 1024], "space.png", "background_music.wav", "MOOM", "icon")
 main_menu.background.set_tiles([[main_menu.background_image]])
 
 # Load media for screen
@@ -689,8 +724,8 @@ while main_menu_loop:
     # KEYBOARD behaviours
     char.keyboard_behaviours()
     char1.keyboard_behaviours()
-    char.action()
-    char1.action()
+    # char.action()
+    # char1.action()
     ship.keyboard_behaviours()
     ship1.keyboard_behaviours()
     ship.action()
