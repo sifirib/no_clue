@@ -8,6 +8,38 @@ import math
 # from Character import Character
 # from SpaceShip import SpaceShip
 
+def set_origin(obj, image, pos, originPos, angle, rotate = False):
+    #if self.angle_ == False: return self.origin
+    # calcaulate the axis aligned bounding box of the rotated image
+    w, h       = image.get_size()
+    box        = [pygame.math.Vector2(p) for p in [(0, 0), (w, 0), (w, -h), (0, -h)]]
+    box_rotate = [p.rotate(angle) for p in box]
+    min_box    = (min(box_rotate, key=lambda p: p[0])[0], min(box_rotate, key=lambda p: p[1])[1])
+    max_box    = (max(box_rotate, key=lambda p: p[0])[0], max(box_rotate, key=lambda p: p[1])[1])
+
+    # calculate the translation of the pivot 
+    pivot        = pygame.math.Vector2(originPos[0], -originPos[1])
+    pivot_rotate = pivot.rotate(angle)
+    pivot_move   = pivot_rotate - pivot
+
+    # calculate the upper left origin of the rotated image
+    origin = ((pos[0] - originPos[0] + min_box[0] - pivot_move[0]), (pos[1] - originPos[1] - max_box[1] + pivot_move[1]))
+
+    obj.origin = origin
+
+    return
+
+def rotate(obj, surf, image, angle):
+    obj.sprit_copy = pygame.transform.rotate(image, angle)
+    
+    # rotate and blit the image
+    # surf.blit(self.sprit_copy, self.origin)
+
+    # draw rectangle around the image
+    pygame.draw.rect(surf, (255, 0, 0), (*obj.origin, *obj.sprit_copy.get_size()), 2)
+    
+    return
+
 class Screen:
     def __init__(self, name, sizes, background_image, background_music, caption, icon):
         self.name = name
@@ -383,32 +415,41 @@ class SpaceShip(object):
         def __init__(self, ship):
             self.ship  = ship
             self.sprit = ship.sprits["thruster_idle"]
+            self.origin = (self.x, self.y)
+            self.sprit_copy = self.sprit
     
         
         @property
         def x(self): 
-            if len(self.ship.poses) > 1:
+            dx = self.ship.sprit_copy.get_width() / 2 - self.ship.offsets["thruster"]
+            print("dx", dx)
 
-                return self.ship.poses[-2][0]
-
-            else:
-                return self.ship.poses[-1][0]
+            return dx * (math.cos(self.ship.angle) - math.sin(self.ship.angle))
         @x.setter
         def x(self, value): self.x = value
+        
         @property
-        def y(self):
-            if len(self.ship.poses) > 1:
+        def y(self): 
+            dy = self.ship.sprit_copy.get_height() / 2 - self.ship.offsets["thruster"]
+            print("dy", dy)
 
-                return self.ship.poses[-2][1]
-
-            else:
-                return self.ship.poses[-1][1]
+            return dy * (math.cos(self.ship.angle) + math.sin(self.ship.angle))
         @y.setter
         def y(self, value): self.y = value
 
         def draw(self):
-            self.ship.screen.blit(self.sprit, (self.x, self.y))
+            w, h = self.sprit_copy.get_size()
         
+            if self.ship.angle_:
+                print("a")
+                set_origin(self, self.sprit, (self.x, self.y), (w/2, h/2), self.ship.angle)
+                rotate(self, self.ship.screen.screen, self.sprit, self.ship.angle)
+            else:
+                set_origin(self, self.sprit, (self.x, self.y), (w/2, h/2), 0)
+            
+            
+            self.ship.screen.blit(self.sprit_copy, self.origin)
+
         def action(self):
             if self.ship.is_["forward"] or self.ship.is_["left"]:
                 self.sprit = self.ship.sprits["thruster_power"]
@@ -433,6 +474,7 @@ class SpaceShip(object):
         self.pilot = pilot
         self.screen = screen
         self.poses = [[self.x, self.y]]
+        
 
         self.is_ = {"right":0, "left":0, "forward":0, "backward":0}
 
@@ -445,12 +487,17 @@ class SpaceShip(object):
                         "thruster_idle":pygame.transform.scale(load_image("1.png"), (64, 64)), 
                         "thruster_power":pygame.transform.scale(load_image("2.png"), (64, 64))
                         }
-        
+        self.sprit_copy = self.sprits["ship"]
+        self.offsets = {"thruster":400}
         self.thruster = self.Thruster(self)
+        
         # self.location = self.sprits["ship"].get_rect(center=self.rect.center)
-        self.image_copy = self.sprits["ship"]
+        
 
-
+    # @property
+    # def offsets(self): 
+    #     offsets = {"thruster":self.thrus}
+    #     return 
     @property
     def speed(self): return abs(self.vel)
     @speed.setter
@@ -467,54 +514,24 @@ class SpaceShip(object):
     def angle_rad(self, value): self.angle_rad = value
 
     @property
-    def rect(self): return self.image_copy.get_rect()
+    def rect(self): return self.sprit_copy.get_rect()
     @rect.setter
     def rect(self, value): self.rect = value
 
     
-    def set_origin(self, image, pos, originPos, angle, rotate = False):
-        #if self.angle_ == False: return self.origin
-        # calcaulate the axis aligned bounding box of the rotated image
-        w, h       = image.get_size()
-        box        = [pygame.math.Vector2(p) for p in [(0, 0), (w, 0), (w, -h), (0, -h)]]
-        box_rotate = [p.rotate(angle) for p in box]
-        min_box    = (min(box_rotate, key=lambda p: p[0])[0], min(box_rotate, key=lambda p: p[1])[1])
-        max_box    = (max(box_rotate, key=lambda p: p[0])[0], max(box_rotate, key=lambda p: p[1])[1])
-
-        # calculate the translation of the pivot 
-        pivot        = pygame.math.Vector2(originPos[0], -originPos[1])
-        pivot_rotate = pivot.rotate(angle)
-        pivot_move   = pivot_rotate - pivot
-
-        # calculate the upper left origin of the rotated image
-        origin = ((pos[0] - originPos[0] + min_box[0] - pivot_move[0]), (pos[1] - originPos[1] - max_box[1] + pivot_move[1]))
-
-        self.origin = origin
-
-        return
-
-    def rotate(self, surf, image, angle):
-        self.image_copy = pygame.transform.rotate(image, angle)
-        
-        # rotate and blit the image
-        # surf.blit(self.image_copy, self.origin)
-
-        # draw rectangle around the image
-        pygame.draw.rect(surf, (255, 0, 0), (*self.origin, *self.image_copy.get_size()), 2)
-        
-        return
+    
 
     def draw(self):
         
         w, h = self.sprits["ship"].get_size()
         
         if self.angle_:
-            self.set_origin(self.sprits["ship"], (self.x, self.y), (w/2, h/2), self.angle)
-            self.rotate(self.screen.screen, self.sprits["ship"], self.angle)
+            set_origin(self, self.sprits["ship"], (self.x, self.y), (w/2, h/2), self.angle)
+            rotate(self, self.screen.screen, self.sprits["ship"], self.angle)
         else:
-            self.set_origin(self.sprits["ship"], (self.x, self.y), (w/2, h/2), 0)
+            set_origin(self, self.sprits["ship"], (self.x, self.y), (w/2, h/2), 0)
 
-        self.screen.blit(self.image_copy, self.origin)
+        self.screen.blit(self.sprit_copy, self.origin)
         self.thruster.draw()
         
     def keyboard_behaviours(self):
@@ -558,10 +575,11 @@ class SpaceShip(object):
 
     def action(self):
         self.thruster.action()
-        print(self.speed)
+        self.poses.append([self.x, self.y])
+        # print(self.speed)
         
         if self.pitch == 0:
-            # self.poses.append([self.x, self.y])
+            
             if self.vel > 0:
                 self.vel -= self.max_speed * earth.air_friction
                 if self.vel < 0:
@@ -581,8 +599,7 @@ class SpaceShip(object):
         
         self.x += math.cos(self.angle_rad) * self.vel
         self.y -= math.sin(self.angle_rad) * self.vel
-            
-
+        
             
         if self.is_["right"]:
             if self.screen.width - self.x <= self.screen.width / 4:
@@ -599,7 +616,6 @@ class SpaceShip(object):
             # self.screen.background.scroll(self.speed, 0)
         else:
             self.screen.background.scroll(0, 0)
-
 
 
 
@@ -676,7 +692,6 @@ moon_width = -300
 moon_height = -200
 play_loop = False
 
-poses = []
 while main_menu_loop:
     # print(int(pygame.time.Clock().get_fps()))
     clock.tick(fps)
