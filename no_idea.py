@@ -8,7 +8,7 @@ import math
 # from Character import Character
 # from SpaceShip import SpaceShip
 
-def set_origin(obj, image, pos, originPos, angle, rotate = False):
+def set_origin(obj, image, pos, origin_pos, angle, rotate = False):
     #if self.angle_ == False: return self.origin
     # calcaulate the axis aligned bounding box of the rotated image
     w, h       = image.get_size()
@@ -18,14 +18,15 @@ def set_origin(obj, image, pos, originPos, angle, rotate = False):
     max_box    = (max(box_rotate, key=lambda p: p[0])[0], max(box_rotate, key=lambda p: p[1])[1])
 
     # calculate the translation of the pivot 
-    pivot        = pygame.math.Vector2(originPos[0], -originPos[1])
+    pivot        = pygame.math.Vector2(origin_pos[0], -origin_pos[1])
     pivot_rotate = pivot.rotate(angle)
     pivot_move   = pivot_rotate - pivot
 
     # calculate the upper left origin of the rotated image
-    origin = ((pos[0] - originPos[0] + min_box[0] - pivot_move[0]), (pos[1] - originPos[1] - max_box[1] + pivot_move[1]))
+    origin = ((pos[0] - origin_pos[0] + min_box[0] - pivot_move[0]), (pos[1] - origin_pos[1] - max_box[1] + pivot_move[1]))
 
     obj.origin = origin
+    # obj.rect.center = obj.origin
 
     return
 
@@ -385,7 +386,7 @@ class Character(object):
         if self.is_["jump"]:
             self.jumpto()
         if self.is_["right"]:
-            if self.screen.width - self.x <= self.screen.width / 4:
+            if self.screen.width - self.x <= self.screen.width / 12:
                 self.screen.background.scroll(-self.speed, 0)
             else:
                 self.walkto("right")
@@ -393,7 +394,7 @@ class Character(object):
             # self.screen.background.scroll(-self.speed, 0) 
         elif self.is_["left"]:
 
-            if self.x <= self.screen.width / 4:
+            if self.x <= self.screen.width / 12:
                 self.screen.background.scroll(self.speed, 0)
             else:
                 self.walkto("left")
@@ -420,16 +421,14 @@ class SpaceShip(object):
     
         
         @property
-        def x(self):
-            print("dx:", self.ship.dx, "self.ship.x:", int(self.ship.x))
-
-            return self.ship.dx * math.cos(self.ship.angle_rad) - self.ship.dy * math.sin(self.ship.angle_rad)
+        def x(self): return self.ship.rect.center[0] - (self.ship.offset("thruster")[0] * math.cos(self.ship.angle_rad) + self.ship.offset("thruster")[1] * math.sin(self.ship.angle_rad))
         @property
-        def y(self):
-            print("dy:", self.ship.dy, "self.ship.y:", int(self.ship.y))
-
-            return self.ship.x * math.sin(self.ship.angle_rad) + self.ship.dy * math.cos(self.ship.angle_rad)
-
+        def y(self): return self.ship.rect.center[1] - (self.ship.offset("thruster")[0] * -math.sin(self.ship.angle_rad) + self.ship.offset("thruster")[1] * math.cos(self.ship.angle_rad))
+        
+        @property
+        def rect(self): return self.sprit_copy.get_rect(center=(self.origin))
+        # @rect.setter
+        # def rect(self, value): self.rect = value
 
         def draw(self):
             w, h = self.sprit_copy.get_size()
@@ -440,7 +439,7 @@ class SpaceShip(object):
                 rotate(self, self.ship.screen.screen, self.sprit, self.ship.angle)
             else:
                 set_origin(self, self.sprit, (self.x, self.y), (w/2, h/2), 0)
-            
+                pass
             
             self.ship.screen.blit(self.sprit_copy, self.origin)
 
@@ -470,7 +469,7 @@ class SpaceShip(object):
         self.poses = [[self.x, self.y]]
         
 
-        self.is_ = {"right":0, "left":0, "forward":0, "backward":0}
+        self.is_ = {"right":0, "left":0, "up":0, "down":0, "forward":0, "backward":0}
 
         aux_controllers = self.pilot.controllers
         aux_controllers.update({"crouch": pygame.K_DOWN})
@@ -482,7 +481,7 @@ class SpaceShip(object):
                         "thruster_power":pygame.transform.scale(load_image("2.png"), (64, 64))
                         }
         self.sprit_copy = self.sprits["ship"]
-        self.offsets = {"thruster":1}
+        self.offsets = {"thruster":(82, -7)}
         self.thruster = self.Thruster(self)
         
         # self.location = self.sprits["ship"].get_rect(center=self.rect.center)
@@ -493,10 +492,10 @@ class SpaceShip(object):
     #     offsets = {"thruster":self.thrus}
     #     return 
 
-    @property
-    def dx(self): return self.x + self.offsets["thruster"] + self.sprit_copy.get_width() / 2
-    @property
-    def dy(self): return self.y + self.offsets["thruster"] + self.sprit_copy.get_height() / 2
+    def offset(self, key):
+
+        return self.offsets[key]
+
 
     @property
     def speed(self): return abs(self.vel)
@@ -514,11 +513,10 @@ class SpaceShip(object):
     def angle_rad(self, value): self.angle_rad = value
 
     @property
-    def rect(self): return self.sprit_copy.get_rect()
+    def rect(self): return self.sprit_copy.get_rect(center=(self.x, self.y))
     @rect.setter
     def rect(self, value): self.rect = value
 
-    
     
 
     def draw(self):
@@ -596,27 +594,35 @@ class SpaceShip(object):
 
         else:
             pass
-        
-        self.x += math.cos(self.angle_rad) * self.vel
-        self.y -= math.sin(self.angle_rad) * self.vel
-        
 
-        if self.is_["right"]:
-            if self.screen.width - self.x <= self.screen.width / 4:
-                self.screen.background.scroll(-self.speed, 0)
-
-            # self.walkto(self.last_direction)
-            # self.screen.background.scroll(-self.speed, 0) 
-        elif self.is_["left"]:
-            if self.x <= self.screen.width / 4:
-                self.screen.background.scroll(self.speed, 0)
-            # else:
-            #     self.x -= self.speed
-            # self.walkto(self.last_direction)
-            # self.screen.background.scroll(self.speed, 0)
+        
+        if (math.cos(self.angle_rad)) > 0:
+            self.is_["right"] = 1
+            self.is_["left"] = 0
+        elif (math.cos(self.angle_rad)) < 0:
+            self.is_["right"] = 0
+            self.is_["left"] = 1
         else:
+            self.is_["right"] = 0
+            self.is_["left"] = 0
+        if (math.sin(self.angle_rad)) > 0:
+            self.is_["up"] = 1
+            self.is_["down"] = 0
+        elif (math.sin(self.angle_rad)) < 0:
+            self.is_["up"] = 0
+            self.is_["down"] = 1
+        else:
+            self.is_["up"] = 0
+            self.is_["down"] = 0
+            
+        if (self.screen.width - self.x <= self.screen.width / 12) or (self.x <= self.screen.width / 12) or (self.y <= self.screen.height / 12) or (self.screen.height - self.y <= self.screen.height / 12):
+            self.screen.background.scroll(-int(math.cos(self.angle_rad) * self.vel), int(math.sin(self.angle_rad) * self.vel))
+        else:
+            self.x += math.cos(self.angle_rad) * self.vel
+            self.y -= math.sin(self.angle_rad) * self.vel
             self.screen.background.scroll(0, 0)
-
+        
+        
 
 
 
@@ -737,8 +743,8 @@ while main_menu_loop:
                 settings_button.font_size = 16
                 
     # KEYBOARD behaviours
-    char.keyboard_behaviours()
-    char1.keyboard_behaviours()
+    # char.keyboard_behaviours()
+    # char1.keyboard_behaviours()
     # char.action()
     # char1.action()
     ship.keyboard_behaviours()
