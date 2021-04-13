@@ -37,7 +37,7 @@ def rotate(obj, surf, image, angle):
     # surf.blit(self.sprit_copy, self.origin)
 
     # draw rectangle around the image
-    pygame.draw.rect(surf, (255, 0, 0), (*obj.origin, *obj.sprit_copy.get_size()), 2)
+    # pygame.draw.rect(surf, (255, 0, 0), (*obj.origin, *obj.sprit_copy.get_size()), 2)
     
     return
 
@@ -415,11 +415,18 @@ class SpaceShip(object):
     class Thruster(object):
         def __init__(self, ship):
             self.ship  = ship
-            self.sprit = ship.sprits["thruster_idle"]
+            # self.sprit = ship.sprits["thruster_idle"]
+            self.sprit_ = self.sprit
             self.origin = (self.x, self.y)
-            self.sprit_copy = self.sprit
-    
+            self.sprit_copy_ = self.sprit
         
+        @property
+        def sprit(self):
+            if self.ship.is_["forward"]: return self.ship.sprits["thruster_power"]
+            else: return self.ship.sprits["thruster_idle"]
+        # @sprit.setter
+        # def sprit(self, value): self.sprit_ = value
+
         @property
         def x(self): return self.ship.rect.center[0] - (self.ship.offset("thruster")[0] * math.cos(self.ship.angle_rad) + self.ship.offset("thruster")[1] * math.sin(self.ship.angle_rad))
         @property
@@ -429,26 +436,31 @@ class SpaceShip(object):
         def rect(self): return self.sprit_copy.get_rect(center=(self.origin))
         # @rect.setter
         # def rect(self, value): self.rect = value
-
-        def draw(self):
-            w, h = self.sprit_copy.get_size()
+        
+        @property
+        def sprit_copy(self):
+            w, h = self.sprit_copy_.get_size()
         
             if self.ship.angle_:
-                
                 set_origin(self, self.sprit, (self.x, self.y), (w/2, h/2), self.ship.angle)
-                rotate(self, self.ship.screen.screen, self.sprit, self.ship.angle)
             else:
                 set_origin(self, self.sprit, (self.x, self.y), (w/2, h/2), 0)
-                pass
+
+            rotate(self, self.ship.screen.screen, self.sprit, self.ship.angle)
+
+            return self.sprit_copy_
             
+        @sprit_copy.setter
+        def sprit_copy(self, value): self.sprit_copy_ = value
+
+
+        
+        def draw(self):
             self.ship.screen.blit(self.sprit_copy, self.origin)
 
-        def action(self):
-            if self.ship.is_["forward"] or self.ship.is_["left"]:
-                self.sprit = self.ship.sprits["thruster_power"]
-            else:
-                self.sprit = self.ship.sprits["thruster_idle"]
 
+        def action(self):            
+            pass
 
     def __init__(self, name, pilot, screen, position):
         self.name = name
@@ -459,7 +471,7 @@ class SpaceShip(object):
         self.vel = 0
         self.normal_speed = 10
         self.max_speed = 20
-        self.accel = 0.5
+        self.accel = 2
         self.sensvity = 7
         self.angle = 0
         self.angle_ = False
@@ -476,7 +488,7 @@ class SpaceShip(object):
         self.controllers = aux_controllers
 
         self.sprits = {
-                        "ship":pygame.transform.scale(load_image("4_Red.png"), (128, 128)), 
+                        "ship":pygame.transform.scale(load_image(self.name), (128, 128)), 
                         "thruster_idle":pygame.transform.scale(load_image("1.png"), (64, 64)), 
                         "thruster_power":pygame.transform.scale(load_image("2.png"), (64, 64))
                         }
@@ -520,14 +532,6 @@ class SpaceShip(object):
     
 
     def draw(self):
-        
-        w, h = self.sprits["ship"].get_size()
-        
-        if self.angle_:
-            set_origin(self, self.sprits["ship"], (self.x, self.y), (w/2, h/2), self.angle)
-            rotate(self, self.screen.screen, self.sprits["ship"], self.angle)
-        else:
-            set_origin(self, self.sprits["ship"], (self.x, self.y), (w/2, h/2), 0)
 
         self.screen.blit(self.sprit_copy, self.origin)
         self.thruster.draw()
@@ -574,8 +578,19 @@ class SpaceShip(object):
     def action(self):
         self.thruster.action()
         self.poses.append([self.x, self.y])
-        # print(self.speed)
+         
+
+
+        w, h = self.sprits["ship"].get_size()
         
+        if self.angle_:
+            set_origin(self, self.sprits["ship"], (self.x, self.y), (w/2, h/2), self.angle)
+            rotate(self, self.screen.screen, self.sprits["ship"], self.angle)
+        else:
+            set_origin(self, self.sprits["ship"], (self.x, self.y), (w/2, h/2), 0)
+
+
+
         if self.pitch == 0:
             
             if self.vel > 0:
@@ -596,26 +611,27 @@ class SpaceShip(object):
             pass
 
         
-        if (math.cos(self.angle_rad)) > 0:
-            self.is_["right"] = 1
-            self.is_["left"] = 0
-        elif (math.cos(self.angle_rad)) < 0:
-            self.is_["right"] = 0
-            self.is_["left"] = 1
-        else:
-            self.is_["right"] = 0
-            self.is_["left"] = 0
-        if (math.sin(self.angle_rad)) > 0:
-            self.is_["up"] = 1
-            self.is_["down"] = 0
-        elif (math.sin(self.angle_rad)) < 0:
-            self.is_["up"] = 0
-            self.is_["down"] = 1
-        else:
-            self.is_["up"] = 0
-            self.is_["down"] = 0
-            
-        if (self.screen.width - self.x <= self.screen.width / 12) or (self.x <= self.screen.width / 12) or (self.y <= self.screen.height / 12) or (self.screen.height - self.y <= self.screen.height / 12):
+        # if (math.cos(self.angle_rad)) > 0:
+        #     self.is_["right"] = 1
+        #     self.is_["left"] = 0
+        # elif (math.cos(self.angle_rad)) < 0:
+        #     self.is_["right"] = 0
+        #     self.is_["left"] = 1
+        # else:
+        #     self.is_["right"] = 0
+        #     self.is_["left"] = 0
+        # if (math.sin(self.angle_rad)) > 0:
+        #     self.is_["up"] = 1
+        #     self.is_["down"] = 0
+        # elif (math.sin(self.angle_rad)) < 0:
+        #     self.is_["up"] = 0
+        #     self.is_["down"] = 1
+        # else:
+        #     self.is_["up"] = 0
+        #     self.is_["down"] = 0
+        
+        print(ship.rect.top, ship.rect.bottom)
+        if (self.screen.width - self.rect.right <= self.screen.width / 12) or (self.rect.left <= self.screen.width / 12) or (self.rect.top <= self.screen.height / 12) or (self.screen.height - self.rect.bottom <= self.screen.height / 12):
             self.screen.background.scroll(-int(math.cos(self.angle_rad) * self.vel), int(math.sin(self.angle_rad) * self.vel))
         else:
             self.x += math.cos(self.angle_rad) * self.vel
@@ -623,7 +639,6 @@ class SpaceShip(object):
             self.screen.background.scroll(0, 0)
         
         
-
 
 
 def is_collision(rect1, rect2):
@@ -634,7 +649,7 @@ def is_collision(rect1, rect2):
 pygame.init()
 
 # Create the screen
-main_menu = Menu("main", [1024, 1024], "space.png", "background_music.wav", "MOOM", "icon")
+main_menu = Menu("main", [1024, 850], "space.png", "background_music.wav", "MOOM", "icon")
 main_menu.background.set_tiles([[main_menu.background_image]])
 
 # Load media for screen
@@ -686,7 +701,7 @@ def redraw_game_screen(*args, window):
     leave_button.draw(window.screen)
     pygame.display.update()
     
- 
+
 # Clock 
 clock =  pygame.time.Clock()
 fps = 45
@@ -758,4 +773,4 @@ while main_menu_loop:
     
     while play_loop:
         print("Crash crash crash C:")
-
+        
