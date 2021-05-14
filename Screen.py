@@ -1,7 +1,7 @@
 import pygame
 import os
 from pygame import mixer
-from Background import *
+from Background import Background
 
 class Screen:
     def __init__(self, name, sizes, background_image, background_music, caption, icon):

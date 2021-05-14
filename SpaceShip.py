@@ -1,12 +1,13 @@
+from Entity import Entity
 import pygame
 import math
 from Background import load_image
-from shared import *
+from shared import set_origin, rotate
 
 
-class SpaceShip(object):
+class SpaceShip(Entity):
 
-    class Thruster(object):
+    class Thruster(Entity):
         def __init__(self, ship):
             self.ship  = ship
             # self.sprit = ship.sprits["thruster_idle"]
@@ -54,13 +55,11 @@ class SpaceShip(object):
         def action(self):
             pass
 
-    def __init__(self, name, pilot, screen, position):
-        self.name = name
-        self.x = position[0]
-        self.y = position[1]
+    def __init__(self, name, position, screen, planet, pilot):
+        super().__init__(name, position, screen, planet)
+
         self.old_x = self.x
         self.old_y = self.y
-        self.vel = 0
         self.normal_speed = 10
         self.max_speed = 20
         self.accel = 2
@@ -69,7 +68,6 @@ class SpaceShip(object):
         self.angle_ = False
         self.origin = (self.x, self.y)
         self.pilot = pilot
-        self.screen = screen
         self.poses = [[self.x, self.y]]
         self.planet = self.pilot.planet
 
@@ -192,7 +190,7 @@ class SpaceShip(object):
                     self.vel = 0
 
             elif self.vel < 0:
-                self.vel += self.max_speed * earth.air_friction
+                self.vel += self.max_speed * self.planet.air_friction
                 if self.vel > 0:
                     self.vel = 0
 
@@ -202,7 +200,6 @@ class SpaceShip(object):
 
         else:
             pass
-
 
         # if (math.cos(self.angle_rad)) > 0:
         #     self.is_["right"] = 1

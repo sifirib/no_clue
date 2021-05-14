@@ -1,4 +1,5 @@
 import pygame
+from Camera import *
 
 def set_origin(obj, image, pos, origin_pos, angle, rotate = False):
     #if self.angle_ == False: return self.origin
@@ -37,3 +38,10 @@ def rotate(obj, surf, image, angle):
 def is_collision(rect1, rect2):
 
     return rect1.colliderect(rect2)
+
+
+# camera = Camera(char)
+# follow = Follow(camera, char)
+# border = Border(camera, char)
+# auto = Auto(camera, char)
+# camera.setmethod(follow)

@@ -2,12 +2,13 @@ import pygame
 from pygame import mixer
 import os
 import math
-from Background import *
-from Screen import *
-from Button import *
-from Character import *
-from SpaceShip import *
-from Planet import *
+from Background import Background
+from Screen import Screen, Menu
+from Button import Button
+from Character import Character
+from SpaceShip import SpaceShip
+from Planet import Planet
+from Camera import *
 from shared import *
 
 
@@ -15,7 +16,7 @@ from shared import *
 pygame.init()
 
 # Create the screen
-main_menu = Menu("main", [1024, 850], "space.png", "background_music.wav", "MOOM", "icon")
+main_menu = Menu("main", [1000, 650], "space.png", "background_music.wav", "MOOM", "icon")
 main_menu.background.set_tiles([[main_menu.background_image]])
 
 # Load media for screen
@@ -49,9 +50,15 @@ char1.controllers = {"jump": pygame.K_w,
                      "left": pygame.K_a,
                      "run": pygame.K_LSHIFT}
 
-ship = SpaceShip("4_Red.png", char, main_menu, [300, 300])
-ship1 = SpaceShip("4_Red.png", char1, main_menu, [300, 400])
+ship = SpaceShip("4_Red.png", [300, 300], main_menu, earth, char)
+ship1 = SpaceShip("4_Red.png", [300, 300], main_menu, earth, char1)
 ship1.controllers["crouch"] = pygame.K_s
+
+# camera = Camera(char)
+# follow = Follow(camera, char)
+# border = Border(camera, char)
+# auto = Auto(camera, char)
+# camera.setmethod(follow)
 
 def redraw_game_screen(*args, window):
     objects = args
@@ -124,10 +131,10 @@ while main_menu_loop:
                 settings_button.font_size = 16
 
     # KEYBOARD behaviours
-    # char.keyboard_behaviours()
-    # char1.keyboard_behaviours()
-    # char.action()
-    # char1.action()
+    char.keyboard_behaviours()
+    char1.keyboard_behaviours()
+    char.action()
+    char1.action()
     ship.keyboard_behaviours()
     ship1.keyboard_behaviours()
     ship.action()
@@ -139,3 +146,8 @@ while main_menu_loop:
 
     while play_loop:
         print("Crash crash crash C:")
+
+
+
+# if __name__ == "main":
+#     print("main")

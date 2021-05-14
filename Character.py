@@ -1,6 +1,6 @@
+from Entity import Entity
 import pygame
 import os
-# import main
 
 def get_and_load_sprits(foldername, character):
     current_path = os.getcwd()
@@ -13,14 +13,10 @@ def get_and_load_sprits(foldername, character):
     return (sprits, len(sprits))
 
 
-class Character(object):
+class Character(Entity):
 
     def __init__(self, name, position, screen, planet):
-        self.name = name  # same with folder name of sprits
-        self.x = position[0]
-        self.y = position[1]
-        self.width = 64
-        self.height = 64
+        super().__init__(name, position, screen, planet)
 
         self.walk_speed = 3
         self.run_speed = self.walk_speed + 4
@@ -54,9 +50,10 @@ class Character(object):
                         }
         self.sprits = self.sprits_r
 
-        self.visible = True
-        self.screen = screen
-        self.planet = planet
+        self.rect = self.sprits_r["Idle"][0][0].get_rect()
+
+
+        # self.ground_y = 200
 
 
 
@@ -159,6 +156,15 @@ class Character(object):
                 self.sprits = self.sprits_l
 
         keys = pygame.key.get_pressed()
+        # for event in pygame.event.get():
+        #     if event.type == pygame.KEYDOWN:
+        #         if event.key == pygame.K_1:
+        #             camera.setmethod(follow)
+        #         elif event.key == pygame.K_2:
+        #             camera.setmethod(auto)
+        #         elif event.key == pygame.K_3:
+        #             camera.setmethod(border)
+        
 
         if keys[self.controllers["right"]]:
             self.is_["right"] = True
