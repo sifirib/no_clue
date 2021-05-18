@@ -1,6 +1,7 @@
-from Entity import Entity
 import pygame
 import os
+from Entity import Entity
+
 
 def get_and_load_sprits(foldername, character):
     current_path = os.getcwd()
@@ -15,8 +16,8 @@ def get_and_load_sprits(foldername, character):
 
 class Character(Entity):
 
-    def __init__(self, name, position, screen, planet):
-        super().__init__(name, position, screen, planet)
+    def __init__(self, name, screen, planet, position):
+        super().__init__(name, screen, planet, position)
 
         self.walk_speed = 3
         self.run_speed = self.walk_speed + 4
@@ -64,20 +65,20 @@ class Character(Entity):
     def collision(self, value): self.collision = value
 
     @property
-    def hitbox(self): return (self.x + 10, self.y + 5, 45, 60)
+    def hitbox(self): return (self.vec.x + 10, self.vec.y + 5, 45, 60)
     @hitbox.setter
     def hitbox(self, value): self.hitbox = value
 
     def walkto(self, direction):
-        if direction == "right" and self.x < self.screen.width - (self.width - 5):
-            self.x += self.speed
-        elif direction == "left" and self.x > 0 - 5:
-            self.x -= self.speed
+        if direction == "right" and self.vec.x < self.screen.width - (self.width - 5):
+            self.vec.x += self.speed
+        elif direction == "left" and self.vec.x > 0 - 5:
+            self.vec.x -= self.speed
 
     def jumpto(self):
         if self.is_["jump"]:
             if self.jump_step >= -self.jump_power:
-                    self.y -= (self.jump_step * abs(self.jump_step)) * 0.33
+                    self.vec.y -= (self.jump_step * abs(self.jump_step)) * 0.33
                     self.jump_step -= 1
 
                     if self.jump_step <= 0:
@@ -111,32 +112,32 @@ class Character(Entity):
             main_menu_loop = False
 
         if self.is_["dead"]:
-            window.blit(self.sprits["Dead"][0][self.counts["dead"]//4], (self.x, self.y))
+            window.blit(self.sprits["Dead"][0][self.counts["dead"]//4], (self.vec.x, self.vec.y))
             self.counts["dead"] += 1
         else:
             if self.is_["jump"]:
                 # self.jumpto()
-                window.blit(self.sprits["Jump"][0][self.counts["jump"]//4], (self.x, self.y))
+                window.blit(self.sprits["Jump"][0][self.counts["jump"]//4], (self.vec.x, self.vec.y))
             if self.is_["right"]:
                 # self.walkto("right")
                 if self.is_["run"]:
-                    window.blit(self.sprits["Run"][0][self.counts["run"]//4], (self.x, self.y))
+                    window.blit(self.sprits["Run"][0][self.counts["run"]//4], (self.vec.x, self.vec.y))
                     self.counts["run"] += 1
                 else:
-                    window.blit(self.sprits["Walk"][0][self.counts["walk"]//4], (self.x, self.y))
+                    window.blit(self.sprits["Walk"][0][self.counts["walk"]//4], (self.vec.x, self.vec.y))
                     self.counts["walk"] += 1
 
             elif self.is_["left"]:
                 # self.walkto("left")
                 if self.is_["run"]:
-                    window.blit(self.sprits["Run"][0][self.counts["run"]//4], (self.x, self.y))
+                    window.blit(self.sprits["Run"][0][self.counts["run"]//4], (self.vec.x, self.vec.y))
                     self.counts["run"] += 1
                 else:
-                    window.blit(self.sprits["Walk"][0][self.counts["walk"]//4], (self.x, self.y))
+                    window.blit(self.sprits["Walk"][0][self.counts["walk"]//4], (self.vec.x, self.vec.y))
                     self.counts["walk"] += 1
 
             else:
-                window.blit(self.sprits["Idle"][0][self.counts["idle"]//4], (self.x, self.y))
+                window.blit(self.sprits["Idle"][0][self.counts["idle"]//4], (self.vec.x, self.vec.y))
                 self.counts["idle"] += 1
 
         pygame.draw.rect(window, (255, 0, 0), self.hitbox, 2)
@@ -194,7 +195,7 @@ class Character(Entity):
         if self.is_["jump"]:
             self.jumpto()
         if self.is_["right"]:
-            if self.screen.width - self.x <= self.screen.width / 12:
+            if self.screen.width - self.vec.x <= self.screen.width / 12:
                 self.screen.background.scroll(-self.speed, 0)
             else:
                 self.walkto("right")
@@ -202,7 +203,7 @@ class Character(Entity):
             # self.screen.background.scroll(-self.speed, 0)
         elif self.is_["left"]:
 
-            if self.x <= self.screen.width / 12:
+            if self.vec.x <= self.screen.width / 12:
                 self.screen.background.scroll(self.speed, 0)
             else:
                 self.walkto("left")

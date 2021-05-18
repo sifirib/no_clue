@@ -39,10 +39,10 @@ leave_button = Button((0, 100, 0), 20, 400, 120, 80, 'Leave')
 earth = Planet()
 
 # Character
-char = Character("girl", [350, 400], main_menu, earth)
+char = Character("girl", main_menu, earth, [350, 400])
 char.jump_step = char.jump_power = 10
 
-char1 = Character("boy", [400, 400], main_menu, earth)
+char1 = Character("boy", main_menu, earth, [400, 400])
 char1.run_speed = char1.walk_speed + 6
 char1.jump_step = char1.jump_power = 12
 char1.controllers = {"jump": pygame.K_w,
@@ -50,8 +50,8 @@ char1.controllers = {"jump": pygame.K_w,
                      "left": pygame.K_a,
                      "run": pygame.K_LSHIFT}
 
-ship = SpaceShip("4_Red.png", [300, 300], main_menu, earth, char)
-ship1 = SpaceShip("4_Red.png", [300, 300], main_menu, earth, char1)
+ship = SpaceShip("4_Red.png", main_menu, earth, char, [300, 300])
+ship1 = SpaceShip("4_Red.png", main_menu, earth, char1, [300, 300])
 ship1.controllers["crouch"] = pygame.K_s
 
 # camera = Camera(char)
@@ -131,10 +131,10 @@ while main_menu_loop:
                 settings_button.font_size = 16
 
     # KEYBOARD behaviours
-    char.keyboard_behaviours()
-    char1.keyboard_behaviours()
-    char.action()
-    char1.action()
+    # char.keyboard_behaviours()
+    # char1.keyboard_behaviours()
+    # char.action()
+    # char1.action()
     ship.keyboard_behaviours()
     ship1.keyboard_behaviours()
     ship.action()
